@@ -230,6 +230,7 @@
     </div>
     <!-- Google Sign-In Button and User Info -->
     <button id="google-signin-btn">Sign in with Google</button>
+    <button id="google-signout-btn" style="display:none;">Sign out</button>
     <span id="user-info" style="margin-left: 10px;"></span>
     <div id="preview-section">
         <h3>Preview Words</h3>
@@ -1462,10 +1463,12 @@
           const userInfo = document.getElementById('user-info');
           if (user) {
             btn.style.display = 'none';
+            signoutBtn.style.display = 'inline-block';
             userInfo.textContent = `Signed in as: ${user.displayName || user.email}`;
             // You can now use user.uid to save/retrieve their progress!
           } else {
             btn.style.display = 'inline-block';
+            signoutBtn.style.display = 'none';
             userInfo.textContent = '';
           }
         });
@@ -1584,134 +1587,26 @@
             };
         }, 0);
 
-        // --- Admin Page for Teacher Progress Tracking ---
-        // Only show Admin button if signed-in user is dlevinson@moriahschool.org
-
-        // Add Admin button and modal to HTML
-        const adminBtn = document.createElement('button');
-        adminBtn.id = 'admin-dashboard-btn';
-        adminBtn.textContent = 'Admin';
-        adminBtn.style.margin = '10px 0';
-        adminBtn.style.display = 'none';
-        document.body.insertBefore(adminBtn, document.getElementById('progress-dashboard-btn'));
-
-        const adminModal = document.createElement('div');
-        adminModal.id = 'admin-dashboard-modal';
-        adminModal.className = 'modal';
-        adminModal.innerHTML = `
-          <div class="modal-content">
-            <span class="close" id="close-admin-dashboard">&times;</span>
-            <h3>Admin: All Students' Progress</h3>
-            <div id="admin-dashboard-content"></div>
-            <div id="admin-user-progress-content" style="margin-top:30px;"></div>
-          </div>
-        `;
-        document.body.appendChild(adminModal);
-
-        // Show Admin button if signed-in user is admin
-        function updateAdminButton(user) {
-            if (user && user.email === 'dlevinson@moriahschool.org') {
-                adminBtn.style.display = 'inline-block';
+        // Ensure sign-in/sign-out UI logic runs after DOM is loaded
+        window.onload = function() {
+          const signoutBtn = document.getElementById('google-signout-btn');
+          const btn = document.getElementById('google-signin-btn');
+          const userInfo = document.getElementById('user-info');
+          auth.onAuthStateChanged(function(user) {
+            if (user) {
+              btn.style.display = 'none';
+              signoutBtn.style.display = 'inline-block';
+              userInfo.textContent = `Signed in as: ${user.displayName || user.email}`;
             } else {
-                adminBtn.style.display = 'none';
+              btn.style.display = 'inline-block';
+              signoutBtn.style.display = 'none';
+              userInfo.textContent = '';
             }
-        }
-
-        // Update auth state handler to show/hide admin button
-        const origAuthHandler = auth.onAuthStateChanged;
-        auth.onAuthStateChanged = function(user) {
-            updateAdminButton(user);
-            if (typeof origAuthHandler === 'function') origAuthHandler(user);
+          });
+          signoutBtn.onclick = function() {
+            auth.signOut();
+          };
         };
-
-        // Admin button click handler
-        adminBtn.onclick = function() {
-            loadAndShowAdminDashboard();
-            document.getElementById('admin-dashboard-modal').style.display = 'block';
-        };
-        document.getElementById('close-admin-dashboard').onclick = function() {
-            document.getElementById('admin-dashboard-modal').style.display = 'none';
-            document.getElementById('admin-user-progress-content').innerHTML = '';
-        };
-
-        // Load all users and their progress summary
-        function loadAndShowAdminDashboard() {
-            const container = document.getElementById('admin-dashboard-content');
-            container.innerHTML = '<div>Loading all users...</div>';
-            db.collection('users').get().then(userSnap => {
-                const users = [];
-                userSnap.forEach(doc => {
-                    const data = doc.data();
-                    users.push({ uid: doc.id, email: data.email || '', doc });
-                });
-                // For each user, get their progress summary
-                const promises = users.map(user =>
-                    db.collection('users').doc(user.uid).collection('progress').get().then(progressSnap => {
-                        let mastered = 0, total = 0;
-                        progressSnap.forEach(pdoc => {
-                            const d = pdoc.data();
-                            if (d.status === 'correct') mastered++;
-                            total++;
-                        });
-                        user.mastered = mastered;
-                        user.total = total;
-                        return user;
-                    })
-                );
-                Promise.all(promises).then(usersWithProgress => {
-                    // Render table
-                    let html = `<table style="width:100%;border-collapse:collapse;">
-                        <tr><th style='text-align:left;'>User</th><th>Email</th><th>Words Mastered</th><th>Total</th><th>Details</th></tr>`;
-                    usersWithProgress.forEach(user => {
-                        html += `<tr>
-                            <td>${user.uid}</td>
-                            <td>${user.email}</td>
-                            <td>${user.mastered}</td>
-                            <td>${user.total}</td>
-                            <td><button onclick="showAdminUserProgress('${user.uid}', '${user.email.replace(/'/g, '')}')">View</button></td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    container.innerHTML = html;
-                });
-            });
-        }
-
-        // Show a user's detailed progress in the admin modal
-        window.showAdminUserProgress = function(uid, email) {
-            const content = document.getElementById('admin-user-progress-content');
-            content.innerHTML = `<h4>Progress for ${email || uid}</h4><div>Loading...</div>`;
-            db.collection('users').doc(uid).collection('progress').get()
-              .then(snapshot => {
-                const data = {};
-                snapshot.forEach(doc => {
-                    const d = doc.data();
-                    const type = d.type || 'other';
-                    const level = d.level || 1;
-                    const wordKey = d.word + (d.prefix ? `__prefix_${d.prefix}` : '') + (d.suffix ? `__suffix_${d.suffix}` : '');
-                    if (!data[type]) data[type] = {};
-                    if (!data[type][level]) data[type][level] = {};
-                    if (!data[type][level][wordKey]) data[type][level][wordKey] = {correct: 0, incorrect: 0, total: 0, word: d.word, prefix: d.prefix, suffix: d.suffix};
-                    if (d.status === 'correct') data[type][level][wordKey].correct++;
-                    if (d.status === 'incorrect') data[type][level][wordKey].incorrect++;
-                    data[type][level][wordKey].total++;
-                });
-                // Use the same dashboard rendering as student
-                const tempDiv = document.createElement('div');
-                tempDiv.style.maxHeight = '400px';
-                tempDiv.style.overflowY = 'auto';
-                content.innerHTML = `<h4>Progress for ${email || uid}</h4>`;
-                content.appendChild(tempDiv);
-                renderProgressDashboard(data, tempDiv);
-              });
-        };
-
-        // Patch renderProgressDashboard to allow custom container
-        const origRenderProgressDashboard = renderProgressDashboard;
-        function renderProgressDashboard(data, containerOverride) {
-            const container = containerOverride || document.getElementById('progress-dashboard-content');
-            origRenderProgressDashboard(data, container);
-        }
     </script>
 </body>
 </html>
