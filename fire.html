@@ -256,6 +256,21 @@
     </div>
     <button id="reveal-button" onclick="reveal()" style="display: none;">Reveal Translation</button>
     <div id="translation"></div>
+    <!-- Progress Buttons -->
+    <div id="progress-buttons" style="display: none; justify-content: space-between; margin: 20px 0;">
+        <button id="correct-btn" style="background-color: #2ecc71; color: white; font-weight: bold;">Correct</button>
+        <button id="incorrect-btn" style="background-color: #e74c3c; color: white; font-weight: bold;">Incorrect</button>
+    </div>
+    <!-- Progress Dashboard Button -->
+    <button id="progress-dashboard-btn" style="margin: 10px 0;">My Progress</button>
+    <!-- Progress Dashboard Modal -->
+    <div id="progress-dashboard-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-progress-dashboard">&times;</span>
+            <h3>My Progress</h3>
+            <div id="progress-dashboard-content"></div>
+        </div>
+    </div>
 
     <div id="preview-modal" class="modal">
         <div class="modal-content">
@@ -702,6 +717,9 @@
         let currentOtherIndex = 0;
         let currentOther = null;
 
+        // --- State for affix mode ---
+        let currentAffixMode = null; // null, 'prefix', 'suffix'
+
         function setPracticeMode(mode) {
             currentMode = mode;
             document.getElementById('practice-options').style.display = 'none';
@@ -871,29 +889,24 @@
                     hideBox('suffix-box');
                     break;
             }
+            document.getElementById('progress-buttons').style.display = 'none';
         }
 
         function showPracticeOptions() {
             currentMode = '';
             gameStarted = false;
-            
             document.getElementById('practice-options').innerHTML = `
-                <button class="prefix-option" onclick="setPracticeMode('prefix')">Prefix</button>
-                <button class="suffix-option" onclick="setPracticeMode('suffix')">Suffix</button>
                 <button class="shoresh-prefix-option" onclick="showLevelOptions('noun')">Nouns</button>
                 <button class="shoresh-suffix-option" onclick="showLevelOptions('verb')">Verbs</button>
                 <button class="others-option" onclick="showOthersLevelOptions()">Others</button>
             `;
             document.getElementById('practice-options').style.display = 'flex';
             document.getElementById('preview-section').style.display = 'block';
-            
             document.getElementById('game-area').style.display = 'none';
             document.getElementById('change-mode-button').style.display = 'none';
             document.getElementById('reveal-button').style.display = 'none';
-            
             document.getElementById('translation').textContent = '';
             resetBoxes();
-            
             updateHeading('SELECT GAME MODE');
         }
 
@@ -920,85 +933,327 @@
         }
 
         function showWordTypeOptions(wordType, level) {
-            const practiceOptions = document.getElementById('practice-options');
-            practiceOptions.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
-                    <button class="shoresh-option" style="background-color:#ff6b6b; margin-bottom: 30px; width: 250px; font-size: 1.3em;" onclick="setShoreshSubcategory('shoresh-${wordType}', ${level})">Shoresh</button>
-                    <div style="display: flex; gap: 30px; justify-content: center;">
-                        <button class="shoresh-prefix-option" style="width: 250px; font-size: 1.1em;" onclick="setShoreshSubcategory('shoresh-prefix-${wordType}', ${level})">Shoresh + Prefix</button>
-                        <button class="shoresh-suffix-option" style="width: 250px; font-size: 1.1em;" onclick="setShoreshSubcategory('shoresh-suffix-${wordType}', ${level})">Shoresh + Suffix</button>
-                    </div>
-                </div>
-            `;
-            practiceOptions.style.display = 'flex';
-            document.getElementById('preview-section').style.display = 'none';
-            updateHeading(`LEVEL ${level} ${wordType.toUpperCase()}`);
+            setShoreshSubcategory('shoresh-affix-' + wordType, level);
         }
 
         function hideBox(id) {
             document.getElementById(id).style.display = 'none';
         }
 
+        // --- 3. Hide correct/incorrect buttons after click, show only after Reveal ---
+        function hideProgressButtons() {
+            document.getElementById('progress-buttons').style.display = 'none';
+        }
+        function showProgressButtons() {
+            document.getElementById('progress-buttons').style.display = 'flex';
+        }
+
+        // --- 4. Shoresh+prefix/suffix: require shoresh correct before prefix/suffix ---
+        let shoreshMasteryState = null; // null = not started, 'shoresh' = waiting for shoresh, 'affix' = doing affix
+        let pendingShoresh = null;
+
         function beginOrNext() {
             const button = document.getElementById('begin-next-button');
             button.textContent = 'Next';
             document.getElementById('reveal-button').style.display = 'inline-block';
-            
+            document.getElementById('progress-buttons').style.display = 'none';
+            document.getElementById('shoresh-box').classList.remove('others-wide-box');
+            ['prefix-box', 'shoresh-box', 'suffix-box'].forEach(id => {
+                document.getElementById(id).style.display = 'flex';
+            });
             if (currentMode === 'others') {
                 spinOther();
                 setOtherBoxClickHandler();
             } else {
-                // Remove wide style if not Others
-                document.getElementById('shoresh-box').classList.remove('others-wide-box');
-            }
-            if (currentMode.includes('shoresh')) {
                 spinShoresh();
+                // On new shoresh, both affix boxes are empty
+                document.getElementById('prefix-box').textContent = '';
+                document.getElementById('suffix-box').textContent = '';
+                currentAffixMode = null;
             }
-            if (currentMode.includes('prefix') || currentMode === 'prefix') {
-                spinPrefix();
-            }
-            if (currentMode.includes('suffix') || currentMode === 'suffix') {
-                spinSuffix();
-            }
-            
             gameStarted = true;
             setBoxClickHandlers();
             clearTranslation();
         }
 
+        // --- 1. For 'others', clicking correct/incorrect cycles shoresh ---
+        function nextOther() {
+            spinOther();
+            clearTranslation();
+        }
+
+        // --- Update progress button handlers ---
+        setTimeout(() => {
+            const correctBtn = document.getElementById('correct-btn');
+            const incorrectBtn = document.getElementById('incorrect-btn');
+            if (correctBtn && incorrectBtn) {
+                correctBtn.onclick = function() {
+                    saveProgress('correct');
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'none';
+                };
+                incorrectBtn.onclick = function() {
+                    saveProgress('incorrect');
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'none';
+                };
+            }
+            // Progress dashboard modal handlers
+            const progressBtn = document.getElementById('progress-dashboard-btn');
+            const closeProgressBtn = document.getElementById('close-progress-dashboard');
+            if (progressBtn && closeProgressBtn) {
+                progressBtn.onclick = function() {
+                    loadAndShowProgress();
+                    document.getElementById('progress-dashboard-modal').style.display = 'block';
+                };
+                closeProgressBtn.onclick = function() {
+                    document.getElementById('progress-dashboard-modal').style.display = 'none';
+                };
+            }
+        }, 0);
+
+        // --- 3. Show progress buttons only after reveal ---
+        function reveal() {
+            const translationEl = document.getElementById('translation');
+            translationEl.innerHTML = '';
+            if (currentMode === 'others' && currentOther) {
+                const span = document.createElement('span');
+                span.textContent = currentOther.meaning;
+                span.className = 'translation-part shoresh-translation';
+                translationEl.appendChild(span);
+                showProgressButtons();
+                return;
+            }
+            if (!currentAffixMode) {
+                if (currentShoresh) {
+                    const shoreshSpan = document.createElement('span');
+                    shoreshSpan.textContent = currentShoresh.meaning;
+                    shoreshSpan.className = 'translation-part shoresh-translation';
+                    translationEl.appendChild(shoreshSpan);
+                }
+                showProgressButtons();
+                return;
+            } else if (currentAffixMode === 'prefix') {
+                if (currentPrefix) {
+                    const prefixSpan = document.createElement('span');
+                    prefixSpan.textContent = currentPrefix.meaning;
+                    prefixSpan.className = 'translation-part prefix-translation';
+                    translationEl.appendChild(prefixSpan);
+                }
+                if (currentShoresh) {
+                    const shoreshSpan = document.createElement('span');
+                    shoreshSpan.textContent = currentShoresh.meaning;
+                    shoreshSpan.className = 'translation-part shoresh-translation';
+                    translationEl.appendChild(shoreshSpan);
+                }
+                showProgressButtons();
+                return;
+            } else if (currentAffixMode === 'suffix') {
+                if (currentSuffix) {
+                    const suffixSpan = document.createElement('span');
+                    suffixSpan.textContent = currentSuffix.meaning;
+                    suffixSpan.className = 'translation-part suffix-translation';
+                    translationEl.appendChild(suffixSpan);
+                }
+                if (currentShoresh) {
+                    const shoreshSpan = document.createElement('span');
+                    shoreshSpan.textContent = currentShoresh.meaning;
+                    shoreshSpan.className = 'translation-part shoresh-translation';
+                    translationEl.appendChild(shoreshSpan);
+                }
+                showProgressButtons();
+                return;
+            }
+        }
+
+        // --- 2. Dashboard: only show levels 1 and 2 for others, and no prefix/suffix for others ---
+        function renderProgressDashboard(data) {
+            const container = document.getElementById('progress-dashboard-content');
+            container.innerHTML = '';
+            function getAllPrefixes(type) {
+                return affixes.filter(a => a.type === 'prefix' && (a.applicableTo.includes(type) || a.applicableTo.includes('both'))).map(a => a.affix);
+            }
+            function getAllSuffixes(type) {
+                return affixes.filter(a => a.type === 'suffix' && (a.applicableTo.includes(type) || a.applicableTo.includes('both'))).map(a => a.affix);
+            }
+            function renderTypeByLevel(type, label, wordList, options={}) {
+                const typeHeader = document.createElement('h3');
+                typeHeader.textContent = `${label} Mastery by Level`;
+                container.appendChild(typeHeader);
+                let maxLevel = 6;
+                if (type === 'other') maxLevel = 2;
+                for (let level = 1; level <= maxLevel; level++) {
+                    const words = (data[type] && data[type][level]) ? data[type][level] : {};
+                    const allWords = wordList.filter(w => w.level === level);
+                    const wordKeys = allWords.map(w => w.word);
+                    let mastered = 0;
+                    let wordMasteryMap = {};
+                    wordKeys.forEach(word => {
+                        let isMastered = false;
+                        for (const key in words) {
+                            if (words[key].word === word && !words[key].prefix && !words[key].suffix && words[key].correct > 0) {
+                                isMastered = true;
+                                break;
+                            }
+                        }
+                        if (isMastered) mastered++;
+                        wordMasteryMap[word] = isMastered;
+                    });
+                    const percent = wordKeys.length ? Math.round((mastered / wordKeys.length) * 100) : 0;
+                    const levelDiv = document.createElement('div');
+                    levelDiv.style.marginBottom = '10px';
+                    levelDiv.style.cursor = 'pointer';
+                    levelDiv.innerHTML = `
+                        <b>Level ${level}:</b> <span id="${type}-level-${level}-count">${mastered}/${wordKeys.length}</span>
+                        <div style="background:#eee;width:100%;height:10px;border-radius:5px;">
+                            <div style="background:#2ecc71;width:${percent}%;height:10px;border-radius:5px;"></div>
+                        </div>
+                    `;
+                    const wordsListDiv = document.createElement('div');
+                    wordsListDiv.style.display = 'none';
+                    wordsListDiv.style.marginLeft = '20px';
+                    wordKeys.forEach(word => {
+                        const wordDiv = document.createElement('div');
+                        wordDiv.style.margin = '5px 0';
+                        wordDiv.style.cursor = 'pointer';
+                        // Shoresh status: only if correct for base (no prefix/suffix)
+                        let shoreshStatus = '?';
+                        for (const key in words) {
+                            if (words[key].word === word && !words[key].prefix && !words[key].suffix) {
+                                if (words[key].correct > 0) shoreshStatus = '<span style="color:#2ecc71;font-weight:bold;">✔️</span>';
+                                else if (words[key].incorrect > 0) shoreshStatus = '❌';
+                            }
+                        }
+                        wordDiv.innerHTML = `<span><b>${word}</b> (Shoresh: ${shoreshStatus})</span>`;
+                        if (type !== 'other') {
+                            // Prefix/suffix progress for nouns/verbs only
+                            let prefixMastered = 0, prefixTotal = 0, suffixMastered = 0, suffixTotal = 0;
+                            let prefixMap = {}, suffixMap = {};
+                            const wordType = allWords.find(w => w.word === word)?.type || type;
+                            const allPrefixes = getAllPrefixes(wordType);
+                            const allSuffixes = getAllSuffixes(wordType);
+                            allPrefixes.forEach(p => { prefixMap[p] = false; });
+                            allSuffixes.forEach(s => { suffixMap[s] = false; });
+                            for (const key in words) {
+                                if (words[key].word === word) {
+                                    if (words[key].prefix && !words[key].suffix) {
+                                        if (prefixMap.hasOwnProperty(words[key].prefix) && words[key].correct > 0) {
+                                            prefixMap[words[key].prefix] = true;
+                                        }
+                                    }
+                                    if (words[key].suffix && !words[key].prefix) {
+                                        if (suffixMap.hasOwnProperty(words[key].suffix) && words[key].correct > 0) {
+                                            suffixMap[words[key].suffix] = true;
+                                        }
+                                    }
+                                }
+                            }
+                            prefixTotal = allPrefixes.length;
+                            suffixTotal = allSuffixes.length;
+                            prefixMastered = Object.values(prefixMap).filter(v => v).length;
+                            suffixMastered = Object.values(suffixMap).filter(v => v).length;
+                            wordDiv.innerHTML += `
+                                <div style=\"font-size:0.9em;\">Prefixes: ${prefixMastered}/${prefixTotal} | Suffixes: ${suffixMastered}/${suffixTotal}</div>
+                                <div style=\"background:#eee;width:100%;height:8px;border-radius:4px;\">
+                                    <div style=\"background:#3498db;width:${prefixTotal ? Math.round((prefixMastered/prefixTotal)*100) : 0}%;height:8px;border-radius:4px;\"></div>
+                                </div>
+                                <div style=\"background:#eee;width:100%;height:8px;border-radius:4px;margin-top:2px;\">
+                                    <div style=\"background:#a55eea;width:${suffixTotal ? Math.round((suffixMastered/suffixTotal)*100) : 0}%;height:8px;border-radius:4px;\"></div>
+                                </div>
+                            `;
+                            // Expand/collapse for prefix/suffix breakdown
+                            const breakdownDiv = document.createElement('div');
+                            breakdownDiv.style.display = 'none';
+                            breakdownDiv.style.marginLeft = '20px';
+                            if (prefixTotal > 0) {
+                                const prefixHeader = document.createElement('div');
+                                prefixHeader.innerHTML = '<b>Prefixes:</b>';
+                                breakdownDiv.appendChild(prefixHeader);
+                                for (const p of allPrefixes) {
+                                    const pDiv = document.createElement('span');
+                                    pDiv.textContent = `${p}: ${prefixMap[p] ? '✔️' : '❌'}  `;
+                                    breakdownDiv.appendChild(pDiv);
+                                }
+                            }
+                            if (suffixTotal > 0) {
+                                const suffixHeader = document.createElement('div');
+                                suffixHeader.innerHTML = '<b>Suffixes:</b>';
+                                breakdownDiv.appendChild(suffixHeader);
+                                for (const s of allSuffixes) {
+                                    const sDiv = document.createElement('span');
+                                    sDiv.textContent = `${s}: ${suffixMap[s] ? '✔️' : '❌'}  `;
+                                    breakdownDiv.appendChild(sDiv);
+                                }
+                            }
+                            wordDiv.onclick = function(e) {
+                                e.stopPropagation();
+                                breakdownDiv.style.display = breakdownDiv.style.display === 'none' ? 'block' : 'none';
+                            };
+                            wordDiv.appendChild(breakdownDiv);
+                        }
+                        wordsListDiv.appendChild(wordDiv);
+                    });
+                    levelDiv.onclick = function() {
+                        wordsListDiv.style.display = wordsListDiv.style.display === 'none' ? 'block' : 'none';
+                    };
+                    container.appendChild(levelDiv);
+                    container.appendChild(wordsListDiv);
+                }
+            }
+            renderTypeByLevel('noun', 'Nouns', rootWords.filter(w => w.type === 'noun'));
+            renderTypeByLevel('verb', 'Verbs', rootWords.filter(w => w.type === 'verb'));
+            renderTypeByLevel('other', 'Others', otherWords, {maxLevel:2});
+        }
+
         function setBoxClickHandlers() {
-            if (currentMode.includes('shoresh')) {
-                const shoreshBox = document.getElementById('shoresh-box');
-                shoreshBox.onclick = () => {
-                    spinShoresh();
-                    if (currentMode === 'shoresh-prefix') {
-                        currentPrefixIndex = 0;
-                        spinPrefix();
-                    }
-                    if (currentMode === 'shoresh-suffix') {
-                        currentSuffixIndex = 0;
-                        spinSuffix();
-                    }
-                    clearTranslation();
-                };
-                shoreshBox.classList.add('clickable');
-            }
-            if (currentMode.includes('prefix') || currentMode === 'prefix') {
-                const prefixBox = document.getElementById('prefix-box');
-                prefixBox.onclick = () => {
+            const shoreshBox = document.getElementById('shoresh-box');
+            const prefixBox = document.getElementById('prefix-box');
+            const suffixBox = document.getElementById('suffix-box');
+            shoreshBox.onclick = () => {
+                // Always allow cycling shoresh, and reset affix state
+                spinShoresh();
+                document.getElementById('prefix-box').textContent = '';
+                document.getElementById('suffix-box').textContent = '';
+                currentAffixMode = null;
+                document.getElementById('translation').textContent = '';
+                document.getElementById('progress-buttons').style.display = 'none';
+                document.getElementById('reveal-button').style.display = 'inline-block';
+            };
+            shoreshBox.classList.add('clickable');
+            prefixBox.onclick = () => {
+                if (!currentAffixMode || currentAffixMode === 'suffix') {
                     spinPrefix();
-                    clearTranslation();
-                };
-                prefixBox.classList.add('clickable');
-            }
-            if (currentMode.includes('suffix') || currentMode === 'suffix') {
-                const suffixBox = document.getElementById('suffix-box');
-                suffixBox.onclick = () => {
+                    currentAffixMode = 'prefix';
+                    document.getElementById('suffix-box').textContent = '';
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                } else if (currentAffixMode === 'prefix') {
+                    spinPrefix();
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                }
+            };
+            prefixBox.classList.add('clickable');
+            suffixBox.onclick = () => {
+                if (!currentAffixMode || currentAffixMode === 'prefix') {
                     spinSuffix();
-                    clearTranslation();
-                };
-                suffixBox.classList.add('clickable');
-            }
+                    currentAffixMode = 'suffix';
+                    document.getElementById('prefix-box').textContent = '';
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                } else if (currentAffixMode === 'suffix') {
+                    spinSuffix();
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                }
+            };
+            suffixBox.classList.add('clickable');
         }
 
         function clearTranslation() {
@@ -1055,51 +1310,6 @@
             } else {
                 currentSuffix = null;
                 document.getElementById('suffix-box').textContent = 'N/A';
-            }
-        }
-
-        function reveal() {
-            const translationEl = document.getElementById('translation');
-            translationEl.innerHTML = '';
-            if (currentMode === 'others' && currentOther) {
-                const span = document.createElement('span');
-                span.textContent = currentOther.meaning;
-                span.className = 'translation-part shoresh-translation';
-                translationEl.appendChild(span);
-                return;
-            }
-            if (currentMode.includes('shoresh-suffix')) {
-                if (currentSuffix) {
-                    const suffixSpan = document.createElement('span');
-                    suffixSpan.textContent = currentSuffix.meaning;
-                    suffixSpan.className = 'translation-part suffix-translation';
-                    translationEl.appendChild(suffixSpan);
-                }
-                if (currentShoresh) {
-                    const shoreshSpan = document.createElement('span');
-                    shoreshSpan.textContent = currentShoresh.meaning;
-                    shoreshSpan.className = 'translation-part shoresh-translation';
-                    translationEl.appendChild(shoreshSpan);
-                }
-            } else {
-                if (currentPrefix) {
-                    const prefixSpan = document.createElement('span');
-                    prefixSpan.textContent = currentPrefix.meaning;
-                    prefixSpan.className = 'translation-part prefix-translation';
-                    translationEl.appendChild(prefixSpan);
-                }
-                if (currentShoresh) {
-                    const shoreshSpan = document.createElement('span');
-                    shoreshSpan.textContent = currentShoresh.meaning;
-                    shoreshSpan.className = 'translation-part shoresh-translation';
-                    translationEl.appendChild(shoreshSpan);
-                }
-                if (currentSuffix && !currentMode.includes('shoresh-suffix')) {
-                    const suffixSpan = document.createElement('span');
-                    suffixSpan.textContent = currentSuffix.meaning;
-                    suffixSpan.className = 'translation-part suffix-translation';
-                    translationEl.appendChild(suffixSpan);
-                }
             }
         }
 
@@ -1272,6 +1482,236 @@
               alert('Sign-in failed: ' + error.message);
             });
         };
+
+        // Save progress to Firestore
+        function saveProgress(status) {
+            const user = auth.currentUser;
+            if (!user) return alert('Please sign in first!');
+            let wordObj = null;
+            let prefix = null;
+            let suffix = null;
+            let type = null;
+            let level = null;
+            if (currentMode === 'others' && currentOther) {
+                wordObj = currentOther;
+                type = 'other';
+                level = currentLevel;
+            } else if (currentShoresh) {
+                wordObj = currentShoresh;
+                type = wordObj.type;
+                level = wordObj.level;
+                if (currentAffixMode === 'prefix' && currentPrefix) prefix = currentPrefix.affix;
+                if (currentAffixMode === 'suffix' && currentSuffix) suffix = currentSuffix.affix;
+            }
+            if (!wordObj) return;
+            let docId = wordObj.word;
+            if (prefix) docId += `__prefix_${prefix}`;
+            if (suffix) docId += `__suffix_${suffix}`;
+            db.collection('users').doc(user.uid)
+              .collection('progress').doc(docId)
+              .set({
+                word: wordObj.word,
+                type: type,
+                level: level,
+                prefix: prefix || null,
+                suffix: suffix || null,
+                status: status,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true })
+              .then(() => {
+                // Optionally show a checkmark or feedback
+              });
+        }
+
+        // Load and show progress dashboard
+        function loadAndShowProgress() {
+            const user = auth.currentUser;
+            if (!user) return;
+            db.collection('users').doc(user.uid).collection('progress').get()
+              .then(snapshot => {
+                const data = {};
+                // Track by type, level, and unique word+prefix+suffix
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    const type = d.type || 'other';
+                    const level = d.level || 1;
+                    const wordKey = d.word + (d.prefix ? `__prefix_${d.prefix}` : '') + (d.suffix ? `__suffix_${d.suffix}` : '');
+                    if (!data[type]) data[type] = {};
+                    if (!data[type][level]) data[type][level] = {};
+                    if (!data[type][level][wordKey]) data[type][level][wordKey] = {correct: 0, incorrect: 0, total: 0, word: d.word, prefix: d.prefix, suffix: d.suffix};
+                    if (d.status === 'correct') data[type][level][wordKey].correct++;
+                    if (d.status === 'incorrect') data[type][level][wordKey].incorrect++;
+                    data[type][level][wordKey].total++;
+                });
+                renderProgressDashboard(data);
+              });
+        }
+
+        // --- 5. After shoresh correct, present affix choice ---
+        function showAffixChoice() {}
+        function hideAffixChoice() {}
+        function chooseAffix() {}
+
+        // --- 2. Shoresh+Affix mode logic ---
+        let shoreshAffixState = null; // null, 'shoresh', 'choice', 'prefix', 'suffix'
+        let practicedAffixes = {prefix: [], suffix: []};
+
+        // 1. Remove Prefix and Suffix buttons from the initial home screen as well as on change mode
+        window.onload = function() {
+            document.getElementById('practice-options').innerHTML = `
+                <button class="shoresh-prefix-option" onclick="showLevelOptions('noun')">Nouns</button>
+                <button class="shoresh-suffix-option" onclick="showLevelOptions('verb')">Verbs</button>
+                <button class="others-option" onclick="showOthersLevelOptions()">Others</button>
+            `;
+        };
+
+        // Fix preview modal close button so it always works
+        // Use a more robust event handler for the close button
+
+        // Replace the old close handler for preview modal
+        setTimeout(() => {
+            const previewModal = document.getElementById('preview-modal');
+            const closeBtns = previewModal.getElementsByClassName('close');
+            for (let i = 0; i < closeBtns.length; i++) {
+                closeBtns[i].onclick = function() {
+                    previewModal.style.display = 'none';
+                };
+            }
+            window.onclick = function(event) {
+                if (event.target == previewModal) {
+                    previewModal.style.display = 'none';
+                }
+            };
+        }, 0);
+
+        // --- Admin Page for Teacher Progress Tracking ---
+        // Only show Admin button if signed-in user is dlevinson@moriahschool.org
+
+        // Add Admin button and modal to HTML
+        const adminBtn = document.createElement('button');
+        adminBtn.id = 'admin-dashboard-btn';
+        adminBtn.textContent = 'Admin';
+        adminBtn.style.margin = '10px 0';
+        adminBtn.style.display = 'none';
+        document.body.insertBefore(adminBtn, document.getElementById('progress-dashboard-btn'));
+
+        const adminModal = document.createElement('div');
+        adminModal.id = 'admin-dashboard-modal';
+        adminModal.className = 'modal';
+        adminModal.innerHTML = `
+          <div class="modal-content">
+            <span class="close" id="close-admin-dashboard">&times;</span>
+            <h3>Admin: All Students' Progress</h3>
+            <div id="admin-dashboard-content"></div>
+            <div id="admin-user-progress-content" style="margin-top:30px;"></div>
+          </div>
+        `;
+        document.body.appendChild(adminModal);
+
+        // Show Admin button if signed-in user is admin
+        function updateAdminButton(user) {
+            if (user && user.email === 'dlevinson@moriahschool.org') {
+                adminBtn.style.display = 'inline-block';
+            } else {
+                adminBtn.style.display = 'none';
+            }
+        }
+
+        // Update auth state handler to show/hide admin button
+        const origAuthHandler = auth.onAuthStateChanged;
+        auth.onAuthStateChanged = function(user) {
+            updateAdminButton(user);
+            if (typeof origAuthHandler === 'function') origAuthHandler(user);
+        };
+
+        // Admin button click handler
+        adminBtn.onclick = function() {
+            loadAndShowAdminDashboard();
+            document.getElementById('admin-dashboard-modal').style.display = 'block';
+        };
+        document.getElementById('close-admin-dashboard').onclick = function() {
+            document.getElementById('admin-dashboard-modal').style.display = 'none';
+            document.getElementById('admin-user-progress-content').innerHTML = '';
+        };
+
+        // Load all users and their progress summary
+        function loadAndShowAdminDashboard() {
+            const container = document.getElementById('admin-dashboard-content');
+            container.innerHTML = '<div>Loading all users...</div>';
+            db.collection('users').get().then(userSnap => {
+                const users = [];
+                userSnap.forEach(doc => {
+                    const data = doc.data();
+                    users.push({ uid: doc.id, email: data.email || '', doc });
+                });
+                // For each user, get their progress summary
+                const promises = users.map(user =>
+                    db.collection('users').doc(user.uid).collection('progress').get().then(progressSnap => {
+                        let mastered = 0, total = 0;
+                        progressSnap.forEach(pdoc => {
+                            const d = pdoc.data();
+                            if (d.status === 'correct') mastered++;
+                            total++;
+                        });
+                        user.mastered = mastered;
+                        user.total = total;
+                        return user;
+                    })
+                );
+                Promise.all(promises).then(usersWithProgress => {
+                    // Render table
+                    let html = `<table style="width:100%;border-collapse:collapse;">
+                        <tr><th style='text-align:left;'>User</th><th>Email</th><th>Words Mastered</th><th>Total</th><th>Details</th></tr>`;
+                    usersWithProgress.forEach(user => {
+                        html += `<tr>
+                            <td>${user.uid}</td>
+                            <td>${user.email}</td>
+                            <td>${user.mastered}</td>
+                            <td>${user.total}</td>
+                            <td><button onclick="showAdminUserProgress('${user.uid}', '${user.email.replace(/'/g, '')}')">View</button></td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    container.innerHTML = html;
+                });
+            });
+        }
+
+        // Show a user's detailed progress in the admin modal
+        window.showAdminUserProgress = function(uid, email) {
+            const content = document.getElementById('admin-user-progress-content');
+            content.innerHTML = `<h4>Progress for ${email || uid}</h4><div>Loading...</div>`;
+            db.collection('users').doc(uid).collection('progress').get()
+              .then(snapshot => {
+                const data = {};
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    const type = d.type || 'other';
+                    const level = d.level || 1;
+                    const wordKey = d.word + (d.prefix ? `__prefix_${d.prefix}` : '') + (d.suffix ? `__suffix_${d.suffix}` : '');
+                    if (!data[type]) data[type] = {};
+                    if (!data[type][level]) data[type][level] = {};
+                    if (!data[type][level][wordKey]) data[type][level][wordKey] = {correct: 0, incorrect: 0, total: 0, word: d.word, prefix: d.prefix, suffix: d.suffix};
+                    if (d.status === 'correct') data[type][level][wordKey].correct++;
+                    if (d.status === 'incorrect') data[type][level][wordKey].incorrect++;
+                    data[type][level][wordKey].total++;
+                });
+                // Use the same dashboard rendering as student
+                const tempDiv = document.createElement('div');
+                tempDiv.style.maxHeight = '400px';
+                tempDiv.style.overflowY = 'auto';
+                content.innerHTML = `<h4>Progress for ${email || uid}</h4>`;
+                content.appendChild(tempDiv);
+                renderProgressDashboard(data, tempDiv);
+              });
+        };
+
+        // Patch renderProgressDashboard to allow custom container
+        const origRenderProgressDashboard = renderProgressDashboard;
+        function renderProgressDashboard(data, containerOverride) {
+            const container = containerOverride || document.getElementById('progress-dashboard-content');
+            origRenderProgressDashboard(data, container);
+        }
     </script>
 </body>
 </html>
