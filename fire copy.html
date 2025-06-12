@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hebrew Word Game</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        #header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin: 0;
+        }
+        #practice-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #game-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        #word-spinner {
+            display: flex;
+            gap: 20px;
+        }
+        .box {
+            width: 120px;
+            height: 120px;
+            border: 3px solid #333;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            padding: 10px;
+            word-break: break-word;
+            text-align: center;
+        }
+        .box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        .clickable {
+            cursor: pointer;
+        }
+        #prefix-box, .prefix-option, .prefix-translation { background-color: #ffd700; }
+        #shoresh-box, .shoresh-option, .shoresh-translation { background-color: #ff6b6b; }
+        #suffix-box, .suffix-option, .suffix-translation { background-color: #4ecdc4; color: white; }
+        .shoresh-prefix-option { background-color: #ff9f43; }
+        .shoresh-suffix-option { background-color: #a55eea; color: white; }
+        button {
+            margin: 5px;
+            padding: 12px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+        #begin-next-button {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        #reveal-button {
+            background-color: #2ecc71;
+            color: white;
+            font-weight: bold;
+        }
+        #translation {
+            margin-top: 30px;
+            font-size: 24px;
+            text-align: center;
+            min-height: 50px;
+        }
+        .translation-part {
+            padding: 5px 10px;
+            margin: 0 5px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .preview-hebrew {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        #preview-section {
+            background-color: #f8f8f8;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: block;
+        }
+        #preview-section h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        #preview-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        #preview-buttons button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #preview-buttons button:hover {
+            background-color: #2980b9;
+        }
+        .level-option {
+            background-color: #3498db;
+            color: white;
+            margin: 5px;
+            padding: 15px 25px;
+            font-size: 18px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .level-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            background-color: #2980b9;
+        }
+        #practice-options {
+            max-width: 600px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #shoresh-box {
+            min-width: 120px;
+            max-width: 350px;
+            min-height: 120px;
+            max-height: none;
+            white-space: pre-line;
+            padding: 10px 16px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .others-wide-box {
+            min-width: 300px !important;
+            max-width: 600px !important;
+            white-space: nowrap !important;
+            overflow-x: auto !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h2 id="main-heading">SELECT GAME MODE</h2>
+        <button id="change-mode-button" onclick="showPracticeOptions()" style="display: none;">Change Mode</button>
+    </div>
+    <!-- Google Sign-In Button and User Info -->
+    <button id="google-signin-btn">Sign in with Google</button>
+    <button id="google-signout-btn" style="display:none;">Sign out</button>
+    <span id="user-info" style="margin-left: 10px;"></span>
+    <div id="preview-section">
+        <h3>Preview Words</h3>
+        <div id="preview-buttons">
+            <button onclick="previewWords('shoresh')">Shorashim</button>
+            <button onclick="previewWords('prefix')">Prefixes</button>
+            <button onclick="previewWords('suffix')">Suffixes</button>
+        </div>
+    </div>
+    <div id="practice-options">
+        <button class="shoresh-prefix-option" onclick="showLevelOptions('noun')">Nouns</button>
+        <button class="shoresh-suffix-option" onclick="showLevelOptions('verb')">Verbs</button>
+        <button class="others-option" onclick="showOthersLevelOptions()">Others</button>
+    </div>
+    <div id="game-area">
+        <button id="begin-next-button" onclick="beginOrNext()">Begin</button>
+        <div id="word-spinner">
+            <div id="suffix-box" class="box"></div>
+            <div id="shoresh-box" class="box"></div>
+            <div id="prefix-box" class="box"></div>
+        </div>
+    </div>
+    <button id="reveal-button" onclick="reveal()" style="display: none;">Reveal Translation</button>
+    <div id="translation"></div>
+    <!-- Progress Buttons -->
+    <div id="progress-buttons" style="display: none; justify-content: space-between; margin: 20px 0;">
+        <button id="correct-btn" style="background-color: #2ecc71; color: white; font-weight: bold;">Correct</button>
+        <button id="incorrect-btn" style="background-color: #e74c3c; color: white; font-weight: bold;">Incorrect</button>
+    </div>
+    <!-- Progress Dashboard Button -->
+    <button id="progress-dashboard-btn" style="margin: 10px 0;">My Progress</button>
+    <!-- Progress Dashboard Modal -->
+    <div id="progress-dashboard-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-progress-dashboard">&times;</span>
+            <h3>My Progress</h3>
+            <div id="progress-dashboard-content"></div>
+        </div>
+    </div>
+
+    <div id="preview-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="preview-title"></h3>
+            <div id="preview-content"></div>
+        </div>
+    </div>
+
+    <script>
+       const rootWords = [
+    // Level 1 Nouns
+    { word: "אָב", meaning: "father", type: "noun", level: 1 },
+    { word: "אָדָם", meaning: "man", type: "noun", level: 1 },
+    { word: "אֲדֹנָי", meaning: "master", type: "noun", level: 1 },
+    { word: "אָח", meaning: "brother", type: "noun", level: 1 },
+    { word: "אֶחָד", meaning: "one", type: "noun", level: 1 },
+    { word: "אַחַר", meaning: "after", type: "noun", level: 1 },
+    { word: "אִישׁ", meaning: "man", type: "noun", level: 1 },
+    { word: "אֱלֹקִים", meaning: "Hashem", type: "noun", level: 1 },
+    { word: "אֶרֶץ", meaning: "land", type: "noun", level: 1 },
+    { word: "בֵּין", meaning: "between", type: "noun", level: 1 },
+    { word: "בֵּית", meaning: "house", type: "noun", level: 1 },
+    { word: "בֵּן", meaning: "son", type: "noun", level: 1 },
+    { word: "דָּבָר", meaning: "word", type: "noun", level: 1 },
+    { word: "דֶּרֶךְ", meaning: "way", type: "noun", level: 1 },
+    { word: "הַר", meaning: "mountain", type: "noun", level: 1 },
+    { word: "טוֹב", meaning: "good", type: "noun", level: 1 },
+    { word: "יָד", meaning: "hand", type: "noun", level: 1 },
+    { word: "יוֹם", meaning: "day", type: "noun", level: 1 },
+    { word: "כֹהֵן", meaning: "priest", type: "noun", level: 1 },
+    { word: "כֹּל", meaning: "all", type: "noun", level: 1 },
+    { word: "לֵב", meaning: "heart", type: "noun", level: 1 },
+    { word: "מֵאָה", meaning: "hundred", type: "noun", level: 1 },
+    { word: "מַיִם", meaning: "water", type: "noun", level: 1 },
+    { word: "מֶלֶךְ", meaning: "king", type: "noun", level: 1 },
+    { word: "נֶפֶשׁ", meaning: "soul", type: "noun", level: 1 },
+
+    // Level 2 Nouns
+    { word: "עֶבֶד", meaning: "servant", type: "noun", level: 2 },
+    { word: "עַיִן", meaning: "eye", type: "noun", level: 2 },
+    { word: "עִיר", meaning: "city", type: "noun", level: 2 },
+    { word: "עַם", meaning: "people", type: "noun", level: 2 },
+    { word: "פָּנִים", meaning: "face", type: "noun", level: 2 },
+    { word: "קוֹל", meaning: "voice", type: "noun", level: 2 },
+    { word: "קֹדֶשׁ", meaning: "holy", type: "noun", level: 2 },
+    { word: "רֹאשׁ", meaning: "head", type: "noun", level: 2 },
+    { word: "שֶׁבַע", meaning: "seven", type: "noun", level: 2 },
+    { word: "שֵׁם", meaning: "name", type: "noun", level: 2 },
+    { word: "שְׁנַיִם", meaning: "two", type: "noun", level: 2 },
+    { word: "שָׁנָה", meaning: "year", type: "noun", level: 2 },
+    { word: "אֹהֶל", meaning: "tent", type: "noun", level: 2 },
+    { word: "אֶלֶף", meaning: "thousand", type: "noun", level: 2 },
+    { word: "אַרְבַּע", meaning: "four", type: "noun", level: 2 },
+    { word: "אִשָׁה", meaning: "woman", type: "noun", level: 2 },
+    { word: "בְּהֵמָה", meaning: "animal", type: "noun", level: 2 },
+    { word: "בַּת", meaning: "daughter", type: "noun", level: 2 },
+    { word: "גָּדול", meaning: "great", type: "noun", level: 2 },
+    { word: "גּוי", meaning: "nation", type: "noun", level: 2 },
+    { word: "דָּם", meaning: "blood", type: "noun", level: 2 },
+    { word: "זָהָב", meaning: "gold", type: "noun", level: 2 },
+    { word: "חָדָשׁ", meaning: "new", type: "noun", level: 2 },
+    { word: "חֲמֵשּׁ", meaning: "five", type: "noun", level: 2 },
+    { word: "חֶרֶב", meaning: "sword", type: "noun", level: 2 },
+
+    // Level 3 Nouns
+    { word: "יָם", meaning: "sea", type: "noun", level: 3 },
+    { word: "כְלִי", meaning: "utensil", type: "noun", level: 3 },
+    { word: "כֶּסֶף", meaning: "silver", type: "noun", level: 3 },
+    { word: "לֶחֶם", meaning: "bread", type: "noun", level: 3 },
+    { word: "מִזְבֵּחַ", meaning: "altar", type: "noun", level: 3 },
+    { word: "מִלְחָמָה", meaning: "war", type: "noun", level: 3 },
+    { word: "מָקוֹם", meaning: "place", type: "noun", level: 3 },
+    { word: "מִשְׁפָּט", meaning: "judgement", type: "noun", level: 3 },
+    { word: "נָבִיא", meaning: "prophet", type: "noun", level: 3 },
+    { word: "סָבִיב", meaning: "around", type: "noun", level: 3 },
+    { word: "עוֹלָה", meaning: "burnt offering", type: "noun", level: 3 },
+    { word: "עוֹלָם", meaning: "forever", type: "noun", level: 3 },
+    { word: "עֵץ", meaning: "tree", type: "noun", level: 3 },
+    { word: "עֶשֶׂר", meaning: "ten", type: "noun", level: 3 },
+    { word: "עֶשְׂרִים", meaning: "twenty", type: "noun", level: 3 },
+    { word: "עֵת", meaning: "time", type: "noun", level: 3 },
+    { word: "פֶּה", meaning: "mouth", type: "noun", level: 3 },
+    { word: "צָבָא", meaning: "army", type: "noun", level: 3 },
+    { word: "רַב", meaning: "many", type: "noun", level: 3 },
+    { word: "רוּחַ", meaning: "spirit", type: "noun", level: 3 },
+    { word: "שָׂדֶה", meaning: "field", type: "noun", level: 3 },
+    { word: "שַׂר", meaning: "officer", type: "noun", level: 3 },
+    { word: "שָׁלשׁ", meaning: "three", type: "noun", level: 3 },
+    { word: "שָׁמַיִם", meaning: "heavens", type: "noun", level: 3 },
+    { word: "שַׁעַר", meaning: "gate", type: "noun", level: 3 },
+
+    // Level 4 Nouns
+    { word: "אֶבֶן", meaning: "stone", type: "noun", level: 4 },
+    { word: "אֲדָמָה", meaning: "ground", type: "noun", level: 4 },
+    { word: "אַיִל", meaning: "ram", type: "noun", level: 4 },
+    { word: "אֵם", meaning: "mother", type: "noun", level: 4 },
+    { word: "אַמָּה", meaning: "cubit", type: "noun", level: 4 },
+    { word: "קָטָן", meaning: "small", type: "noun", level: 4 },
+    { word: "אָרוֹן", meaning: "ark", type: "noun", level: 4 },
+    { word: "בֶּגֶד", meaning: "clothing", type: "noun", level: 4 },
+    { word: "בֹּקֶר", meaning: "morning", type: "noun", level: 4 },
+    { word: "בּרִית", meaning: "agreement", type: "noun", level: 4 },
+    { word: "בָּשָׂר", meaning: "flesh", type: "noun", level: 4 },
+    { word: "גְּבוּל", meaning: "border", type: "noun", level: 4 },
+    { word: "זֶרַע", meaning: "seed", type: "noun", level: 4 },
+    { word: "חַטָּאת", meaning: "sin offering", type: "noun", level: 4 },
+    { word: "חַי", meaning: "life", type: "noun", level: 4 },
+    { word: "חַיִל", meaning: "strength", type: "noun", level: 4 },
+    { word: "חֶסֶד", meaning: "kindness", type: "noun", level: 4 },
+    { word: "כָּבוֹד", meaning: "honor", type: "noun", level: 4 },
+    { word: "כַּף", meaning: "palm", type: "noun", level: 4 },
+    { word: "אֱמֶת", meaning: "truth", type: "noun", level: 4 },
+    { word: "לַיְלָה", meaning: "night", type: "noun", level: 4 },
+    { word: "מְאֹד", meaning: "a lot", type: "noun", level: 4 },
+    { word: "מִדְבָּר", meaning: "desert", type: "noun", level: 4 },
+    { word: "מוֹעֵד", meaning: "meeting", type: "noun", level: 4 },
+    { word: "מַחֲנֶה", meaning: "camp", type: "noun", level: 4 },
+
+    // Level 5 Nouns
+    { word: "מַטֶּה", meaning: "staff", type: "noun", level: 5 },
+    { word: "מַלְאָךְ", meaning: "messenger/angel", type: "noun", level: 5 },
+    { word: "מִנְחָה", meaning: "present", type: "noun", level: 5 },
+    { word: "מַעֲשֶׂה", meaning: "action", type: "noun", level: 5 },
+    { word: "מִשׁפָּחָה", meaning: "family", type: "noun", level: 5 },
+    { word: "נְאֻם", meaning: "utterance", type: "noun", level: 5 },
+    { word: "נַחֲלָה", meaning: "inheritance", type: "noun", level: 5 },
+    { word: "נַעַר", meaning: "young boy", type: "noun", level: 5 },
+    { word: "עָוֹן", meaning: "guilt", type: "noun", level: 5 },
+    { word: "צֹאן", meaning: "flock", type: "noun", level: 5 },
+    { word: "צַדּיק", meaning: "righteous person", type: "noun", level: 5 },
+    { word: "קֶרֶב", meaning: "within", type: "noun", level: 5 },
+    { word: "רֶגֶל", meaning: "foot", type: "noun", level: 5 },
+    { word: "רֵעֶה", meaning: "friend", type: "noun", level: 5 },
+    { word: "רָשָׁע", meaning: "wicked", type: "noun", level: 5 },
+    { word: "שָׁלוֹם", meaning: "peace", type: "noun", level: 5 },
+    { word: "שִׁשָׁה", meaning: "six", type: "noun", level: 5 },
+    { word: "תּוֹרָה", meaning: "law", type: "noun", level: 5 },
+    { word: "בְּכוֹר", meaning: "first born", type: "noun", level: 5 },
+    { word: "דּוֹר", meaning: "generation", type: "noun", level: 5 },
+    { word: "זֶבַח", meaning: "sacrifice", type: "noun", level: 5 },
+    { word: "זָקֵן", meaning: "elder", type: "noun", level: 5 },
+    { word: "חֲצִי", meaning: "half", type: "noun", level: 5 },
+    { word: "חֹק", meaning: "law", type: "noun", level: 5 },
+    { word: "יָמִין", meaning: "right", type: "noun", level: 5 },
+
+    // Level 6 Nouns
+    { word: "שְׂמֹאל", meaning: "left", type: "noun", level: 6 },
+    { word: "יָשָׁר", meaning: "straight", type: "noun", level: 6 },
+    { word: "כִּסֵּא", meaning: "throne", type: "noun", level: 6 },
+    { word: "לָשׁוֹן", meaning: "language", type: "noun", level: 6 },
+    { word: "מִסְפַּר", meaning: "number", type: "noun", level: 6 },
+    { word: "נְהַר", meaning: "river", type: "noun", level: 6 },
+    { word: "נַחַל", meaning: "valley/stream", type: "noun", level: 6 },
+    { word: "נְחֹשֶׁת", meaning: "copper", type: "noun", level: 6 },
+    { word: "נָשִׂיא", meaning: "prince", type: "noun", level: 6 },
+    { word: "נָשִׁים", meaning: "women", type: "noun", level: 6 },
+    { word: "עֵדָה", meaning: "congregation", type: "noun", level: 6 },
+    { word: "עֶרֶב", meaning: "evening", type: "noun", level: 6 },
+    { word: "אוֹיֵב", meaning: "enemy", type: "noun", level: 6 },
+    { word: "רִאשׁוֹן", meaning: "first", type: "noun", level: 6 },
+    { word: "רָעָב", meaning: "famine", type: "noun", level: 6 },
+    { word: "שֵׁבֶט", meaning: "tribe", type: "noun", level: 6 },
+    { word: "חָצֵר", meaning: "courtyard", type: "noun", level: 6 },
+    { word: "צָפוֹן", meaning: "north", type: "noun", level: 6 },
+    { word: "נֶגֶב", meaning: "south", type: "noun", level: 6 },
+    { word: "סוּס", meaning: "horse", type: "noun", level: 6 },
+    { word: "שֶׁקֶר", meaning: "lie", type: "noun", level: 6 },
+    { word: "אוֹת", meaning: "sign", type: "noun", level: 6 },
+    { word: "יַיִן", meaning: "wine", type: "noun", level: 6 },
+    { word: "מַרְאֶה", meaning: "appearance", type: "noun", level: 6 },
+    { word: "עַמּוּד", meaning: "pillar", type: "noun", level: 6 },
+            // Level 1 Verbs
+            { word: "אָכַל", meaning: "eat", type: "verb", level: 1 },
+            { word: "אָמַר", meaning: "say", type: "verb", level: 1 },
+            { word: "בּוֹא", meaning: "come", type: "verb", level: 1 },
+            { word: "דִּבֶּר", meaning: "speak", type: "verb", level: 1 },
+            { word: "הָיָה", meaning: "be", type: "verb", level: 1 },
+            { word: "הָלַך", meaning: "go", type: "verb", level: 1 },
+            { word: "יָדַע", meaning: "know", type: "verb", level: 1 },
+            { word: "יָלַד", meaning: "bring forth", type: "verb", level: 1 },
+            { word: "יָצָא", meaning: "go out", type: "verb", level: 1 },
+            { word: "יָשַׁב", meaning: "sit/dwell", type: "verb", level: 1 },
+            { word: "לָקַח", meaning: "take", type: "verb", level: 1 },
+            { word: "מוּת", meaning: "die", type: "verb", level: 1 },
+            { word: "נָשָׂא", meaning: "lift up", type: "verb", level: 1 },
+            { word: "נָתַן", meaning: "give", type: "verb", level: 1 },
+            { word: "עָבַר", meaning: "pass", type: "verb", level: 1 },
+            { word: "עָלָה", meaning: "go up", type: "verb", level: 1 },
+            { word: "עָמַד", meaning: "stand", type: "verb", level: 1 },
+            { word: "עָשָׂה", meaning: "do/make", type: "verb", level: 1 },
+            { word: "צוָה", meaning: "command", type: "verb", level: 1 },
+            { word: "קָרָא", meaning: "call/meet", type: "verb", level: 1 },
+            { word: "קוּם", meaning: "get up", type: "verb", level: 1 },
+            { word: "רָאָה", meaning: "see", type: "verb", level: 1 },
+            { word: "שִׂים", meaning: "put", type: "verb", level: 1 },
+            { word: "שָׁלַח", meaning: "send", type: "verb", level: 1 },
+            { word: "שָׁמַע", meaning: "hear", type: "verb", level: 1 },
+            // Level 2 Verbs
+            { word: "שׁוּב", meaning: "return", type: "verb", level: 2 },
+            { word: "אָהַב", meaning: "love", type: "verb", level: 2 },
+            { word: "אָסַף", meaning: "gather", type: "verb", level: 2 },
+            { word: "בָנָה", meaning: "build", type: "verb", level: 2 },
+            { word: "בִּקֵשׁ", meaning: "seek", type: "verb", level: 2 },
+            { word: "בֵּרַךְ", meaning: "bless", type: "verb", level: 2 },
+            { word: "חָזַק", meaning: "be strong", type: "verb", level: 2 },
+            { word: "זַָכַר", meaning: "remember", type: "verb", level: 2 },
+            { word: "חַיָה", meaning: "be alive", type: "verb", level: 2 },
+            { word: "חָטָא", meaning: "sin", type: "verb", level: 2 },
+            { word: "יָכֹל", meaning: "be able", type: "verb", level: 2 },
+            { word: "יָסַף", meaning: "add", type: "verb", level: 2 },
+            { word: "יָרֵא", meaning: "fear", type: "verb", level: 2 },
+            { word: "יָרַד", meaning: "go down", type: "verb", level: 2 },
+            { word: "יָרַשׁ", meaning: "possess", type: "verb", level: 2 },
+            { word: "יָשַׁע", meaning: "save", type: "verb", level: 2 },
+            { word: "כָּלָה", meaning: "complete", type: "verb", level: 2 },
+            { word: "כָּרַת", meaning: "cut off", type: "verb", level: 2 },
+            { word: "כָּתַב", meaning: "write", type: "verb", level: 2 },
+            { word: "כּוּן", meaning: "prepare", type: "verb", level: 2 },
+            { word: "מָלֵא", meaning: "be full", type: "verb", level: 2 },
+            { word: "מָלַךְ", meaning: "reign", type: "verb", level: 2 },
+            { word: "מָצָא", meaning: "find", type: "verb", level: 2 },
+            { word: "נָגַד", meaning: "opposite/tell", type: "verb", level: 2 },
+            { word: "נָטָה", meaning: "stretch out", type: "verb", level: 2 },
+            // Level 3 Verbs
+            { word: "נָכָה", meaning: "hit", type: "verb", level: 3 },
+            { word: "נָפַל", meaning: "fall", type: "verb", level: 3 },
+            { word: "נָצַל", meaning: "snatch", type: "verb", level: 3 },
+            { word: "סוּר", meaning: "turn aside", type: "verb", level: 3 },
+            { word: "עָבַד", meaning: "serve/work", type: "verb", level: 3 },
+            { word: "עָנָה", meaning: "answer", type: "verb", level: 3 },
+            { word: "פָּקַד", meaning: "appoint", type: "verb", level: 3 },
+            { word: "רָבָה", meaning: "become many", type: "verb", level: 3 },
+            { word: "רוּם", meaning: "raise", type: "verb", level: 3 },
+            { word: "שָׁכַב", meaning: "lie down", type: "verb", level: 3 },
+            { word: "שָׁמַר", meaning: "guard", type: "verb", level: 3 },
+            { word: "שָׁפַט", meaning: "judge", type: "verb", level: 3 },
+            { word: "שָׁתַה", meaning: "drink", type: "verb", level: 3 },
+            { word: "אָבַד", meaning: "lost", type: "verb", level: 3 },
+            { word: "אָמֵן", meaning: "believe", type: "verb", level: 3 },
+            { word: "בּוֹשׁ", meaning: "be ashamed", type: "verb", level: 3 },
+            { word: "בָּטַח", meaning: "trust", type: "verb", level: 3 },
+            { word: "בִּין", meaning: "understand", type: "verb", level: 3 },
+            { word: "בָּכָה", meaning: "cry", type: "verb", level: 3 },
+            { word: "גָּאַל", meaning: "redeem", type: "verb", level: 3 },
+            { word: "גָּדַל", meaning: "be great", type: "verb", level: 3 },
+            { word: "גּוּר", meaning: "live", type: "verb", level: 3 },
+            { word: "גָּלָה", meaning: "reveal", type: "verb", level: 3 },
+            { word: "דָּרַשׁ", meaning: "seek", type: "verb", level: 3 },
+            { word: "הִלֵּל", meaning: "praise", type: "verb", level: 3 },
+            // Level 4 Verbs
+            { word: "הָרַג", meaning: "kill", type: "verb", level: 4 },
+            { word: "זָבַח", meaning: "sacrifice", type: "verb", level: 4 },
+            { word: "חָלַל", meaning: "profane", type: "verb", level: 4 },
+            { word: "חָנָה", meaning: "camp", type: "verb", level: 4 },
+            { word: "חָשַׁב", meaning: "think", type: "verb", level: 4 },
+            { word: "טָמֵא", meaning: "impure", type: "verb", level: 4 },
+            { word: "יָדָה", meaning: "thank", type: "verb", level: 4 },
+            { word: "יָטַב", meaning: "be good", type: "verb", level: 4 },
+            { word: "יָתֵּר", meaning: "remain", type: "verb", level: 4 },
+            { word: "כָּבֵד", meaning: "be heavy", type: "verb", level: 4 },
+            { word: "כָּסָה", meaning: "cover", type: "verb", level: 4 },
+            { word: "כָּפַר", meaning: "atone", type: "verb", level: 4 },
+            { word: "לָבֵשׁ", meaning: "wear", type: "verb", level: 4 },
+            { word: "לָחַם", meaning: "fight", type: "verb", level: 4 },
+            { word: "לָכַד", meaning: "capture", type: "verb", level: 4 },
+            { word: "נָבָא", meaning: "prophesy", type: "verb", level: 4 },
+            { word: "נָגַע", meaning: "touch", type: "verb", level: 4 },
+            { word: "נָגַשׁ", meaning: "approach", type: "verb", level: 4 },
+            { word: "נוּס", meaning: "flee", type: "verb", level: 4 },
+            { word: "נָחַם", meaning: "comfort", type: "verb", level: 4 },
+            { word: "נָסַע", meaning: "travel", type: "verb", level: 4 },
+            { word: "סָבַב", meaning: "surround", type: "verb", level: 4 },
+            { word: "סָפַר", meaning: "count/tell", type: "verb", level: 4 },
+            { word: "עָזַב", meaning: "abandon", type: "verb", level: 4 },
+            { word: "פָּנָה", meaning: "turn", type: "verb", level: 4 },
+            // Level 5 Verbs
+            { word: "פָּתַחּ", meaning: "open", type: "verb", level: 5 },
+            { word: "קָבַץ", meaning: "gather", type: "verb", level: 5 },
+            { word: "קָבַר", meaning: "bury", type: "verb", level: 5 },
+            { word: "קָדַשׁ", meaning: "be holy", type: "verb", level: 5 },
+            { word: "קָטַר", meaning: "burn", type: "verb", level: 5 },
+            { word: "קָרַב", meaning: "come close", type: "verb", level: 5 },
+            { word: "רָדַף", meaning: "pursue", type: "verb", level: 5 },
+            { word: "רוּץ", meaning: "run", type: "verb", level: 5 },
+            { word: "רָעָה", meaning: "tend", type: "verb", level: 5 },
+            { word: "שָׂמַח", meaning: "rejoice", type: "verb", level: 5 },
+            { word: "שָׂנֵא", meaning: "hate", type: "verb", level: 5 },
+            { word: "שָׂרַף", meaning: "burn", type: "verb", level: 5 },
+            { word: "שָׁאַל", meaning: "ask", type: "verb", level: 5 },
+            { word: "שָׁאַר", meaning: "remain", type: "verb", level: 5 },
+            { word: "שָׁבַע", meaning: "swear", type: "verb", level: 5 },
+            { word: "שָׁבַר", meaning: "break", type: "verb", level: 5 },
+            { word: "שָׁחָה", meaning: "bow", type: "verb", level: 5 },
+            { word: "שָׁחַת", meaning: "destroy", type: "verb", level: 5 },
+            { word: "שָׁכֵן", meaning: "settle", type: "verb", level: 5 },
+            { word: "שָׁכַח", meaning: "forget", type: "verb", level: 5 },
+            { word: "שָׁלַךְ", meaning: "throw", type: "verb", level: 5 },
+            { word: "שָׁלֵם", meaning: "be whole", type: "verb", level: 5 },
+            { word: "שָׁפַךְ", meaning: "pour", type: "verb", level: 5 },
+            { word: "שָׁרַת", meaning: "serve", type: "verb", level: 5 },
+            { word: "אָרַר", meaning: "curse", type: "verb", level: 5 },
+            // Level 6 Verbs
+            { word: "בָּחַר", meaning: "choose", type: "verb", level: 6 },
+            { word: "בָּרָא", meaning: "create", type: "verb", level: 6 },
+            { word: "דָּבַק", meaning: "attach", type: "verb", level: 6 },
+            { word: "חָזָה", meaning: "see", type: "verb", level: 6 },
+            { word: "חָנַן", meaning: "favor", type: "verb", level: 6 },
+            { word: "חָרַשׁ", meaning: "plow", type: "verb", level: 6 },
+            { word: "יָבֵשׁ", meaning: "dry up", type: "verb", level: 6 },
+            { word: "יָצַר", meaning: "form", type: "verb", level: 6 },
+            { word: "לָמַד", meaning: "learn", type: "verb", level: 6 },
+            { word: "מָכַר", meaning: "sell", type: "verb", level: 6 },
+            { word: "מָשַׁח", meaning: "anoint", type: "verb", level: 6 },
+            { word: "מָשַׁל", meaning: "rule", type: "verb", level: 6 },
+            { word: "נוּחַ", meaning: "rest", type: "verb", level: 6 },
+            { word: "נָחַל", meaning: "inherit", type: "verb", level: 6 },
+            { word: "עָנָה", meaning: "afflicted", type: "verb", level: 6 },
+            { word: "פָּדָה", meaning: "redeem", type: "verb", level: 6 },
+            { word: "פָּלַל", meaning: "pray", type: "verb", level: 6 },
+            { word: "צָעַק", meaning: "cry out", type: "verb", level: 6 },
+            { word: "קָנָה", meaning: "acquire", type: "verb", level: 6 },
+            { word: "צָלַח", meaning: "succeed", type: "verb", level: 6 },
+            { word: "רָחַץ", meaning: "wash", type: "verb", level: 6 },
+            { word: "רָפָא", meaning: "heal", type: "verb", level: 6 },
+            { word: "רָצָה", meaning: "want", type: "verb", level: 6 },
+            { word: "שָׁבַת", meaning: "rest", type: "verb", level: 6 },
+            { word: "שִׁיר", meaning: "sing", type: "verb", level: 6 }
+        ];
+
+        const affixes = [
+            // Prefixes
+            { affix: "וְ", type: "prefix", meaning: "and", applicableTo: ["noun", "verb"] },
+            { affix: "ה", type: "prefix", meaning: "the", applicableTo: ["noun", "verb"] },
+            { affix: "בְ", type: "prefix", meaning: "in/with", applicableTo: ["noun", "verb"] },
+            { affix: "בַּ", type: "prefix", meaning: "in/with the", applicableTo: ["noun"] },
+            { affix: "כְ", type: "prefix", meaning: "like", applicableTo: ["noun", "verb"] },
+            { affix: "כַּ", type: "prefix", meaning: "like the", applicableTo: ["noun"] },
+            { affix: "לְ", type: "prefix", meaning: "to / for", applicableTo: ["noun", "verb"] },
+            { affix: "לַ", type: "prefix", meaning: "to/for the", applicableTo: ["noun"] },
+            { affix: "מְ", type: "prefix", meaning: "from", applicableTo: ["noun", "verb"] },
+            { affix: "שֶׁ", type: "prefix", meaning: "that", applicableTo: ["noun", "verb"] },
+            { affix: "א", type: "prefix", meaning: "I will", applicableTo: ["verb"] },
+            { affix: "י", type: "prefix", meaning: "he will", applicableTo: ["verb"] },
+            { affix: "נ", type: "prefix", meaning: "we will", applicableTo: ["verb"] },
+            { affix: "ת", type: "prefix", meaning: "you will", applicableTo: ["verb"] },
+
+            // Suffixes
+            { affix: "יִ", type: "suffix", meaning: "me /my", applicableTo: ["noun"] },
+            { affix: "ֵי", type: "suffix", meaning: "of", applicableTo: ["noun"] },
+            { affix: "ךָ", type: "suffix", meaning: "your", applicableTo: ["noun"] },
+            { affix: "יו", type: "suffix", meaning: "his/him", applicableTo: ["noun"] },
+            { affix: "ָה", type: "suffix", meaning: "her", applicableTo: ["noun"] },
+            { affix: "ָה", type: "suffix", meaning: "she (did)", applicableTo: ["verb"] },
+            { affix: "נוּ", type: "suffix", meaning: "our/us", applicableTo: ["noun"] },
+            { affix: "נוּ", type: "suffix", meaning: "we (did)", applicableTo: ["verb"] },
+            { affix: "כֶם", type: "suffix", meaning: "your", applicableTo: ["noun"] },
+            { affix: "הֶם", type: "suffix", meaning: "them/their", applicableTo: ["noun"] },
+            { affix: "ָם", type: "suffix", meaning: "them/their", applicableTo: ["noun"] },
+            { affix: "וֹת", type: "suffix", meaning: "plural f", applicableTo: ["noun"] },
+            { affix: "יִם", type: "suffix", meaning: "plural m", applicableTo: ["noun"] },
+            { affix: "תִּי", type: "suffix", meaning: "I (did)", applicableTo: ["verb"] },
+            { affix: "תָּ", type: "suffix", meaning: "you (did)", applicableTo: ["verb"] },
+            { affix: "וּ", type: "suffix", meaning: "they (did)", applicableTo: ["verb"] },
+            { affix: "תֶּם", type: "suffix", meaning: "you (did)", applicableTo: ["verb"] },
+            { affix: "תֶּן", type: "suffix", meaning: "you (did)", applicableTo: ["verb"] },
+            { affix: "ךְ", type: "suffix", meaning: "your", applicableTo: ["noun"] },
+            { affix: "וֹ", type: "suffix", meaning: "his/him", applicableTo: ["noun"] },
+            { affix: "כֶן", type: "suffix", meaning: "your", applicableTo: ["noun"] },
+            { affix: "הֶן", type: "suffix", meaning: "them/their", applicableTo: ["noun"] },
+            { affix: "ָן", type: "suffix", meaning: "them/their", applicableTo: ["noun"] },
+            { affix: "תְּ", type: "suffix", meaning: "you (did)", applicableTo: ["verb"] },
+        ];
+
+        const otherWords = [
+            { word: "אֶל", meaning: "to", level: 1 },
+            { word: "עַד", meaning: "until", level: 1 },
+            { word: "לִפְנֵי", meaning: "before", level: 1 },
+            { word: "לִפְנות/מוּל/לִקְרַאת", meaning: "towards", level: 1 },
+            { word: "אֵצֶל", meaning: "next to", level: 1 },
+            { word: "אַחַר/אַחֲרֵי", meaning: "behind/after", level: 1 },
+            { word: "עַל", meaning: "upon", level: 1 },
+            { word: "תַחַת", meaning: "beneath", level: 1 },
+            { word: "חוּץ", meaning: "outside/without", level: 1 },
+            { word: "בְּתוֹךְ", meaning: "inside/through", level: 1 },
+            { word: "מִן", meaning: "from", level: 1 },
+            { word: "אֶת/ אֵת/עִם", meaning: "with", level: 1 },
+            { word: "בְּעוד", meaning: "within", level: 1 },
+            { word: "מֵאָז", meaning: "since", level: 1 },
+            { word: "בִּגְלָל/מִפְּנֵי", meaning: "because of", level: 1 },
+            { word: "לְמַעַן", meaning: "for the sake of", level: 1 },
+            { word: "בְּיַד", meaning: "by", level: 1 },
+            { word: "אַף", meaning: "even", level: 1 },
+            { word: "כֹּה", meaning: "thus", level: 1 },
+            { word: "עַתָּה", meaning: "now", level: 1 },
+            { word: "עוֹד", meaning: "still/again", level: 1 },
+            { word: "שָׁם", meaning: "there", level: 1 },
+            { word: "רַק", meaning: "only", level: 1 },
+            { word: "גַּם", meaning: "also", level: 1 },
+            { word: "פֹּה", meaning: "here", level: 1 },
+            { word: "לְבַד", meaning: "alone", level: 2 },
+            { word: "אֵיפֹה", meaning: "where", level: 2 },
+            { word: "מָתַּי", meaning: "when", level: 2 },
+            { word: "תָּמִיד", meaning: "continually", level: 2 },
+            { word: "אֶתְּמוֹל", meaning: "yesterday", level: 2 },
+            { word: "מָחָר", meaning: "tomorrow", level: 2 },
+            { word: "כַּמָה", meaning: "how much", level: 2 },
+            { word: "מְעַט", meaning: "little", level: 2 },
+            { word: "לָכֵן", meaning: "therefore", level: 2 },
+            { word: "אֵיךְ", meaning: "how", level: 2 },
+            { word: "אוּלַי", meaning: "maybe", level: 2 },
+            { word: "לָמָה", meaning: "why", level: 2 },
+            { word: "אֲשֶׁר", meaning: "that/which/when", level: 2 },
+            { word: "כִּי", meaning: "because/when", level: 2 },
+            { word: "אוֹ", meaning: "or", level: 2 },
+            { word: "נָא", meaning: "please", level: 2 },
+            { word: "אֵלֶּה", meaning: "these", level: 2 },
+            { word: "פֶּן", meaning: "or else", level: 2 },
+            { word: "זֹאת/זֶה", meaning: "this", level: 2 },
+            { word: "הַהוּא", meaning: "that", level: 2 },
+            { word: "מִי", meaning: "who", level: 2 },
+            { word: "אַחֵר", meaning: "someone else", level: 2 },
+            { word: "אִם", meaning: "if", level: 2 },
+            { word: "אֵין/אַל", meaning: "not", level: 2 },
+            { word: "אָנֹכִי", meaning: "I", level: 2 }
+        ];
+
+        let currentMode = '';
+        let currentShoresh = null;
+        let currentPrefix = null;
+        let currentSuffix = null;
+        let gameStarted = false;
+        let currentShoreshIndex = 0;
+        let currentPrefixIndex = 0;
+        let currentSuffixIndex = 0;
+        let currentLevel = 1;
+        let currentOtherIndex = 0;
+        let currentOther = null;
+
+        // --- State for affix mode ---
+        let currentAffixMode = null; // null, 'prefix', 'suffix'
+
+        function setPracticeMode(mode) {
+            currentMode = mode;
+            document.getElementById('practice-options').style.display = 'none';
+            document.getElementById('preview-section').style.display = 'none';
+            document.getElementById('game-area').style.display = 'flex';
+            document.getElementById('change-mode-button').style.display = 'inline-block';
+            document.getElementById('begin-next-button').textContent = 'Begin';
+            
+            // Show/hide boxes based on mode
+            const prefixBox = document.getElementById('prefix-box');
+            const suffixBox = document.getElementById('suffix-box');
+            const shoreshBox = document.getElementById('shoresh-box');
+            
+            // First hide all boxes
+            prefixBox.style.display = 'none';
+            suffixBox.style.display = 'none';
+            shoreshBox.style.display = 'none';
+            
+            // Then show the appropriate boxes
+            if (mode === 'prefix') {
+                prefixBox.style.display = 'flex';
+                shoreshBox.style.display = 'flex';
+            } else if (mode === 'suffix') {
+                suffixBox.style.display = 'flex';
+                shoreshBox.style.display = 'flex';
+            } else if (mode === 'shoresh') {
+                shoreshBox.style.display = 'flex';
+            }
+            
+            resetBoxes();
+            gameStarted = false;
+        }
+
+        function showShoreshSubcategories(mode) {
+            const practiceOptions = document.getElementById('practice-options');
+            const baseMode = mode === 'shoresh' ? 'shoresh' : mode;
+            practiceOptions.innerHTML = `
+                <button class="shoresh-option" onclick="setShoreshSubcategory('${baseMode}-noun')">Noun</button>
+                <button class="shoresh-option" onclick="setShoreshSubcategory('${baseMode}-verb')">Verb</button>
+            `;
+            practiceOptions.style.display = 'flex';
+            document.getElementById('preview-section').style.display = 'none';
+            updateHeading('CHOOSE WORD TYPE');
+        }
+
+        function setShoreshSubcategory(fullMode, level) {
+            currentMode = fullMode;
+            currentLevel = level;
+            document.getElementById('practice-options').style.display = 'none';
+            document.getElementById('preview-section').style.display = 'none';
+            document.getElementById('game-area').style.display = 'flex';
+            document.getElementById('change-mode-button').style.display = 'inline-block';
+            document.getElementById('begin-next-button').textContent = 'Begin';
+            resetBoxes();
+            gameStarted = false;
+            updateHeading(fullMode);
+        }
+
+        function updateHeading(mode) {
+            const heading = document.getElementById('main-heading');
+            switch(mode) {
+                case 'CHOOSE WORD TYPE':
+                    heading.textContent = 'CHOOSE WORD TYPE';
+                    break;
+                case 'shoresh-noun':
+                    heading.textContent = 'SHORESH - NOUN';
+                    break;
+                case 'shoresh-verb':
+                    heading.textContent = 'SHORESH - VERB';
+                    break;
+                case 'shoresh-prefix-noun':
+                    heading.textContent = 'SHORESH + PREFIX - NOUN';
+                    break;
+                case 'shoresh-prefix-verb':
+                    heading.textContent = 'SHORESH + PREFIX - VERB';
+                    break;
+                case 'shoresh-suffix-noun':
+                    heading.textContent = 'SHORESH + SUFFIX - NOUN';
+                    break;
+                case 'shoresh-suffix-verb':
+                    heading.textContent = 'SHORESH + SUFFIX - VERB';
+                    break;
+                case 'prefix':
+                    heading.textContent = 'PREFIX';
+                    break;
+                case 'suffix':
+                    heading.textContent = 'SUFFIX';
+                    break;
+                default:
+                    heading.textContent = 'SELECT GAME MODE';
+            }
+        }
+
+        function spinShoresh() {
+            let wordType;
+            if (currentMode.includes('noun')) {
+                wordType = 'noun';
+            } else if (currentMode.includes('verb')) {
+                wordType = 'verb';
+            }
+
+            const applicableWords = rootWords.filter(word => 
+                word.type === wordType && 
+                word.level === currentLevel
+            );
+            
+            if (applicableWords.length > 0) {
+                currentShoresh = applicableWords[currentShoreshIndex % applicableWords.length];
+                document.getElementById('shoresh-box').textContent = currentShoresh.word;
+                currentShoreshIndex = (currentShoreshIndex + 1) % applicableWords.length;
+                
+                if (currentMode.includes('shoresh-prefix')) {
+                    currentPrefixIndex = 0;
+                    spinPrefix();
+                } else if (currentMode.includes('shoresh-suffix')) {
+                    currentSuffixIndex = 0;
+                    spinSuffix();
+                }
+            } else {
+                currentShoresh = null;
+                document.getElementById('shoresh-box').textContent = 'No words available';
+            }
+        }
+
+        function resetBoxes() {
+            ['prefix-box', 'shoresh-box', 'suffix-box'].forEach(id => {
+                const box = document.getElementById(id);
+                box.style.display = 'flex';
+                box.textContent = '';
+                box.onclick = null;
+                box.classList.remove('clickable');
+            });
+            currentShoresh = null;
+            currentPrefix = null;
+            currentSuffix = null;
+            document.getElementById('translation').textContent = '';
+            
+            currentShoreshIndex = 0;
+            currentPrefixIndex = 0;
+            currentSuffixIndex = 0;
+            
+            switch(currentMode) {
+                case 'shoresh':
+                case 'shoresh-noun':
+                case 'shoresh-verb':
+                    hideBox('prefix-box');
+                    hideBox('suffix-box');
+                    break;
+                case 'prefix':
+                    hideBox('shoresh-box');
+                    hideBox('suffix-box');
+                    break;
+                case 'suffix':
+                    hideBox('prefix-box');
+                    hideBox('shoresh-box');
+                    break;
+                case 'shoresh-prefix-noun':
+                case 'shoresh-prefix-verb':
+                    hideBox('suffix-box');
+                    break;
+                case 'shoresh-suffix-noun':
+                case 'shoresh-suffix-verb':
+                    hideBox('prefix-box');
+                    break;
+                case 'others':
+                    hideBox('prefix-box');
+                    hideBox('suffix-box');
+                    break;
+            }
+            document.getElementById('progress-buttons').style.display = 'none';
+        }
+
+        function showPracticeOptions() {
+            currentMode = '';
+            gameStarted = false;
+            document.getElementById('practice-options').innerHTML = `
+                <button class="shoresh-prefix-option" onclick="showLevelOptions('noun')">Nouns</button>
+                <button class="shoresh-suffix-option" onclick="showLevelOptions('verb')">Verbs</button>
+                <button class="others-option" onclick="showOthersLevelOptions()">Others</button>
+            `;
+            document.getElementById('practice-options').style.display = 'flex';
+            document.getElementById('preview-section').style.display = 'block';
+            document.getElementById('game-area').style.display = 'none';
+            document.getElementById('change-mode-button').style.display = 'none';
+            document.getElementById('reveal-button').style.display = 'none';
+            document.getElementById('translation').textContent = '';
+            resetBoxes();
+            updateHeading('SELECT GAME MODE');
+        }
+
+        function showLevelOptions(wordType) {
+            const levelRanges = [
+                'Level 1 (1-25)',
+                'Level 2 (26-50)',
+                'Level 3 (51-75)',
+                'Level 4 (76-100)',
+                'Level 5 (101-125)',
+                'Level 6 (126-150)'
+            ];
+            const practiceOptions = document.getElementById('practice-options');
+            practiceOptions.innerHTML = `
+                ${[1,2,3,4,5,6].map(level => `
+                    <button class="level-option" onclick="showWordTypeOptions('${wordType}', ${level})">
+                        ${levelRanges[level-1]}
+                    </button>
+                `).join('')}
+            `;
+            practiceOptions.style.display = 'flex';
+            document.getElementById('preview-section').style.display = 'none';
+            updateHeading(`SELECT ${wordType.toUpperCase()} LEVEL`);
+        }
+
+        function showWordTypeOptions(wordType, level) {
+            setShoreshSubcategory('shoresh-affix-' + wordType, level);
+        }
+
+        function hideBox(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        // --- 3. Hide correct/incorrect buttons after click, show only after Reveal ---
+        function hideProgressButtons() {
+            document.getElementById('progress-buttons').style.display = 'none';
+        }
+        function showProgressButtons() {
+            document.getElementById('progress-buttons').style.display = 'flex';
+        }
+
+        // --- 4. Shoresh+prefix/suffix: require shoresh correct before prefix/suffix ---
+        let shoreshMasteryState = null; // null = not started, 'shoresh' = waiting for shoresh, 'affix' = doing affix
+        let pendingShoresh = null;
+
+        function beginOrNext() {
+            const button = document.getElementById('begin-next-button');
+            button.textContent = 'Next';
+            document.getElementById('reveal-button').style.display = 'inline-block';
+            document.getElementById('progress-buttons').style.display = 'none';
+            document.getElementById('shoresh-box').classList.remove('others-wide-box');
+            ['prefix-box', 'shoresh-box', 'suffix-box'].forEach(id => {
+                document.getElementById(id).style.display = 'flex';
+            });
+            if (currentMode === 'others') {
+                spinOther();
+                setOtherBoxClickHandler();
+            } else {
+                spinShoresh();
+                // On new shoresh, both affix boxes are empty
+                document.getElementById('prefix-box').textContent = '';
+                document.getElementById('suffix-box').textContent = '';
+                currentAffixMode = null;
+            }
+            gameStarted = true;
+            setBoxClickHandlers();
+            clearTranslation();
+        }
+
+        // --- 1. For 'others', clicking correct/incorrect cycles shoresh ---
+        function nextOther() {
+            spinOther();
+            clearTranslation();
+        }
+
+        // --- Update progress button handlers ---
+        setTimeout(() => {
+            const correctBtn = document.getElementById('correct-btn');
+            const incorrectBtn = document.getElementById('incorrect-btn');
+            if (correctBtn && incorrectBtn) {
+                correctBtn.onclick = function() {
+                    saveProgress('correct');
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'none';
+                };
+                incorrectBtn.onclick = function() {
+                    saveProgress('incorrect');
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'none';
+                };
+            }
+            // Progress dashboard modal handlers
+            const progressBtn = document.getElementById('progress-dashboard-btn');
+            const closeProgressBtn = document.getElementById('close-progress-dashboard');
+            if (progressBtn && closeProgressBtn) {
+                progressBtn.onclick = function() {
+                    loadAndShowProgress();
+                    document.getElementById('progress-dashboard-modal').style.display = 'block';
+                };
+                closeProgressBtn.onclick = function() {
+                    document.getElementById('progress-dashboard-modal').style.display = 'none';
+                };
+            }
+        }, 0);
+
+        // --- 3. Show progress buttons only after reveal ---
+        function reveal() {
+            const translationEl = document.getElementById('translation');
+            translationEl.innerHTML = '';
+            if (currentMode === 'others' && currentOther) {
+                const span = document.createElement('span');
+                span.textContent = currentOther.meaning;
+                span.className = 'translation-part shoresh-translation';
+                translationEl.appendChild(span);
+                showProgressButtons();
+                return;
+            }
+            if (!currentAffixMode) {
+                if (currentShoresh) {
+                    const shoreshSpan = document.createElement('span');
+                    shoreshSpan.textContent = currentShoresh.meaning;
+                    shoreshSpan.className = 'translation-part shoresh-translation';
+                    translationEl.appendChild(shoreshSpan);
+                }
+                showProgressButtons();
+                return;
+            } else if (currentAffixMode === 'prefix') {
+                if (currentPrefix) {
+                    const prefixSpan = document.createElement('span');
+                    prefixSpan.textContent = currentPrefix.meaning;
+                    prefixSpan.className = 'translation-part prefix-translation';
+                    translationEl.appendChild(prefixSpan);
+                }
+                if (currentShoresh) {
+                    const shoreshSpan = document.createElement('span');
+                    shoreshSpan.textContent = currentShoresh.meaning;
+                    shoreshSpan.className = 'translation-part shoresh-translation';
+                    translationEl.appendChild(shoreshSpan);
+                }
+                showProgressButtons();
+                return;
+            } else if (currentAffixMode === 'suffix') {
+                if (currentSuffix) {
+                    const suffixSpan = document.createElement('span');
+                    suffixSpan.textContent = currentSuffix.meaning;
+                    suffixSpan.className = 'translation-part suffix-translation';
+                    translationEl.appendChild(suffixSpan);
+                }
+                if (currentShoresh) {
+                    const shoreshSpan = document.createElement('span');
+                    shoreshSpan.textContent = currentShoresh.meaning;
+                    shoreshSpan.className = 'translation-part shoresh-translation';
+                    translationEl.appendChild(shoreshSpan);
+                }
+                showProgressButtons();
+                return;
+            }
+        }
+
+        // --- 2. Dashboard: only show levels 1 and 2 for others, and no prefix/suffix for others ---
+        function renderProgressDashboard(data) {
+            const container = document.getElementById('progress-dashboard-content');
+            container.innerHTML = '';
+            function getAllPrefixes(type) {
+                return affixes.filter(a => a.type === 'prefix' && (a.applicableTo.includes(type) || a.applicableTo.includes('both'))).map(a => a.affix);
+            }
+            function getAllSuffixes(type) {
+                return affixes.filter(a => a.type === 'suffix' && (a.applicableTo.includes(type) || a.applicableTo.includes('both'))).map(a => a.affix);
+            }
+            function renderTypeByLevel(type, label, wordList, options={}) {
+                const typeHeader = document.createElement('h3');
+                typeHeader.textContent = `${label} Mastery by Level`;
+                container.appendChild(typeHeader);
+                let maxLevel = 6;
+                if (type === 'other') maxLevel = 2;
+                for (let level = 1; level <= maxLevel; level++) {
+                    const words = (data[type] && data[type][level]) ? data[type][level] : {};
+                    const allWords = wordList.filter(w => w.level === level);
+                    const wordKeys = allWords.map(w => w.word);
+                    let mastered = 0;
+                    let wordMasteryMap = {};
+                    wordKeys.forEach(word => {
+                        let isMastered = false;
+                        for (const key in words) {
+                            if (words[key].word === word && !words[key].prefix && !words[key].suffix && words[key].correct > 0) {
+                                isMastered = true;
+                                break;
+                            }
+                        }
+                        if (isMastered) mastered++;
+                        wordMasteryMap[word] = isMastered;
+                    });
+                    const percent = wordKeys.length ? Math.round((mastered / wordKeys.length) * 100) : 0;
+                    const levelDiv = document.createElement('div');
+                    levelDiv.style.marginBottom = '10px';
+                    levelDiv.style.cursor = 'pointer';
+                    levelDiv.innerHTML = `
+                        <b>Level ${level}:</b> <span id="${type}-level-${level}-count">${mastered}/${wordKeys.length}</span>
+                        <div style="background:#eee;width:100%;height:10px;border-radius:5px;">
+                            <div style="background:#2ecc71;width:${percent}%;height:10px;border-radius:5px;"></div>
+                        </div>
+                    `;
+                    const wordsListDiv = document.createElement('div');
+                    wordsListDiv.style.display = 'none';
+                    wordsListDiv.style.marginLeft = '20px';
+                    wordKeys.forEach(word => {
+                        const wordDiv = document.createElement('div');
+                        wordDiv.style.margin = '5px 0';
+                        wordDiv.style.cursor = 'pointer';
+                        // Shoresh status: only if correct for base (no prefix/suffix)
+                        let shoreshStatus = '?';
+                        for (const key in words) {
+                            if (words[key].word === word && !words[key].prefix && !words[key].suffix) {
+                                if (words[key].correct > 0) shoreshStatus = '<span style="color:#2ecc71;font-weight:bold;">✔️</span>';
+                                else if (words[key].incorrect > 0) shoreshStatus = '❌';
+                            }
+                        }
+                        wordDiv.innerHTML = `<span><b>${word}</b> (Shoresh: ${shoreshStatus})</span>`;
+                        if (type !== 'other') {
+                            // Prefix/suffix progress for nouns/verbs only
+                            let prefixMastered = 0, prefixTotal = 0, suffixMastered = 0, suffixTotal = 0;
+                            let prefixMap = {}, suffixMap = {};
+                            const wordType = allWords.find(w => w.word === word)?.type || type;
+                            const allPrefixes = getAllPrefixes(wordType);
+                            const allSuffixes = getAllSuffixes(wordType);
+                            allPrefixes.forEach(p => { prefixMap[p] = false; });
+                            allSuffixes.forEach(s => { suffixMap[s] = false; });
+                            for (const key in words) {
+                                if (words[key].word === word) {
+                                    if (words[key].prefix && !words[key].suffix) {
+                                        if (prefixMap.hasOwnProperty(words[key].prefix) && words[key].correct > 0) {
+                                            prefixMap[words[key].prefix] = true;
+                                        }
+                                    }
+                                    if (words[key].suffix && !words[key].prefix) {
+                                        if (suffixMap.hasOwnProperty(words[key].suffix) && words[key].correct > 0) {
+                                            suffixMap[words[key].suffix] = true;
+                                        }
+                                    }
+                                }
+                            }
+                            prefixTotal = allPrefixes.length;
+                            suffixTotal = allSuffixes.length;
+                            prefixMastered = Object.values(prefixMap).filter(v => v).length;
+                            suffixMastered = Object.values(suffixMap).filter(v => v).length;
+                            wordDiv.innerHTML += `
+                                <div style=\"font-size:0.9em;\">Prefixes: ${prefixMastered}/${prefixTotal} | Suffixes: ${suffixMastered}/${suffixTotal}</div>
+                                <div style=\"background:#eee;width:100%;height:8px;border-radius:4px;\">
+                                    <div style=\"background:#3498db;width:${prefixTotal ? Math.round((prefixMastered/prefixTotal)*100) : 0}%;height:8px;border-radius:4px;\"></div>
+                                </div>
+                                <div style=\"background:#eee;width:100%;height:8px;border-radius:4px;margin-top:2px;\">
+                                    <div style=\"background:#a55eea;width:${suffixTotal ? Math.round((suffixMastered/suffixTotal)*100) : 0}%;height:8px;border-radius:4px;\"></div>
+                                </div>
+                            `;
+                            // Expand/collapse for prefix/suffix breakdown
+                            const breakdownDiv = document.createElement('div');
+                            breakdownDiv.style.display = 'none';
+                            breakdownDiv.style.marginLeft = '20px';
+                            if (prefixTotal > 0) {
+                                const prefixHeader = document.createElement('div');
+                                prefixHeader.innerHTML = '<b>Prefixes:</b>';
+                                breakdownDiv.appendChild(prefixHeader);
+                                for (const p of allPrefixes) {
+                                    const pDiv = document.createElement('span');
+                                    pDiv.textContent = `${p}: ${prefixMap[p] ? '✔️' : '❌'}  `;
+                                    breakdownDiv.appendChild(pDiv);
+                                }
+                            }
+                            if (suffixTotal > 0) {
+                                const suffixHeader = document.createElement('div');
+                                suffixHeader.innerHTML = '<b>Suffixes:</b>';
+                                breakdownDiv.appendChild(suffixHeader);
+                                for (const s of allSuffixes) {
+                                    const sDiv = document.createElement('span');
+                                    sDiv.textContent = `${s}: ${suffixMap[s] ? '✔️' : '❌'}  `;
+                                    breakdownDiv.appendChild(sDiv);
+                                }
+                            }
+                            wordDiv.onclick = function(e) {
+                                e.stopPropagation();
+                                breakdownDiv.style.display = breakdownDiv.style.display === 'none' ? 'block' : 'none';
+                            };
+                            wordDiv.appendChild(breakdownDiv);
+                        }
+                        wordsListDiv.appendChild(wordDiv);
+                    });
+                    levelDiv.onclick = function() {
+                        wordsListDiv.style.display = wordsListDiv.style.display === 'none' ? 'block' : 'none';
+                    };
+                    container.appendChild(levelDiv);
+                    container.appendChild(wordsListDiv);
+                }
+            }
+            renderTypeByLevel('noun', 'Nouns', rootWords.filter(w => w.type === 'noun'));
+            renderTypeByLevel('verb', 'Verbs', rootWords.filter(w => w.type === 'verb'));
+            renderTypeByLevel('other', 'Others', otherWords, {maxLevel:2});
+        }
+
+        function setBoxClickHandlers() {
+            const shoreshBox = document.getElementById('shoresh-box');
+            const prefixBox = document.getElementById('prefix-box');
+            const suffixBox = document.getElementById('suffix-box');
+            shoreshBox.onclick = () => {
+                // Always allow cycling shoresh, and reset affix state
+                spinShoresh();
+                document.getElementById('prefix-box').textContent = '';
+                document.getElementById('suffix-box').textContent = '';
+                currentAffixMode = null;
+                document.getElementById('translation').textContent = '';
+                document.getElementById('progress-buttons').style.display = 'none';
+                document.getElementById('reveal-button').style.display = 'inline-block';
+            };
+            shoreshBox.classList.add('clickable');
+            prefixBox.onclick = () => {
+                if (!currentAffixMode || currentAffixMode === 'suffix') {
+                    spinPrefix();
+                    currentAffixMode = 'prefix';
+                    document.getElementById('suffix-box').textContent = '';
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                } else if (currentAffixMode === 'prefix') {
+                    spinPrefix();
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                }
+            };
+            prefixBox.classList.add('clickable');
+            suffixBox.onclick = () => {
+                if (!currentAffixMode || currentAffixMode === 'prefix') {
+                    spinSuffix();
+                    currentAffixMode = 'suffix';
+                    document.getElementById('prefix-box').textContent = '';
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                } else if (currentAffixMode === 'suffix') {
+                    spinSuffix();
+                    document.getElementById('translation').textContent = '';
+                    document.getElementById('progress-buttons').style.display = 'none';
+                    document.getElementById('reveal-button').style.display = 'inline-block';
+                }
+            };
+            suffixBox.classList.add('clickable');
+        }
+
+        function clearTranslation() {
+            document.getElementById('translation').textContent = '';
+        }
+
+        function spinAll() {
+            if (currentMode.includes('shoresh')) spinShoresh();
+            if (currentMode.includes('prefix') || currentMode === 'prefix') spinPrefix();
+            if (currentMode.includes('suffix') || currentMode === 'suffix') spinSuffix();
+            clearTranslation();
+        }
+
+        function spinPrefix() {
+            let applicablePrefixes;
+            if (currentMode === 'prefix') {
+                applicablePrefixes = affixes.filter(a => a.type === "prefix");
+            } else if (currentShoresh) {
+                applicablePrefixes = affixes.filter(a => 
+                    a.type === "prefix" && 
+                    (a.applicableTo.includes(currentShoresh.type) || a.applicableTo.includes("both"))
+                );
+            } else {
+                applicablePrefixes = [];
+            }
+
+            if (applicablePrefixes.length > 0) {
+                currentPrefix = applicablePrefixes[currentPrefixIndex % applicablePrefixes.length];
+                document.getElementById('prefix-box').textContent = currentPrefix.affix;
+                currentPrefixIndex = (currentPrefixIndex + 1) % applicablePrefixes.length;
+            } else {
+                currentPrefix = null;
+                document.getElementById('prefix-box').textContent = 'N/A';
+            }
+        }
+
+        function spinSuffix() {
+            let applicableSuffixes;
+            if (currentMode === 'suffix') {
+                applicableSuffixes = affixes.filter(a => a.type === "suffix");
+            } else if (currentShoresh) {
+                applicableSuffixes = affixes.filter(a => 
+                    a.type === "suffix" && 
+                    (a.applicableTo.includes(currentShoresh.type) || a.applicableTo.includes("both"))
+                );
+            } else {
+                applicableSuffixes = [];
+            }
+
+            if (applicableSuffixes.length > 0) {
+                currentSuffix = applicableSuffixes[currentSuffixIndex % applicableSuffixes.length];
+                document.getElementById('suffix-box').textContent = currentSuffix.affix;
+                currentSuffixIndex = (currentSuffixIndex + 1) % applicableSuffixes.length;
+            } else {
+                currentSuffix = null;
+                document.getElementById('suffix-box').textContent = 'N/A';
+            }
+        }
+
+        function previewWords(category) {
+            const modal = document.getElementById('preview-modal');
+            const title = document.getElementById('preview-title');
+            const content = document.getElementById('preview-content');
+            
+            content.innerHTML = '';
+            
+            if (category === 'shoresh') {
+                title.textContent = 'Shorashim & Others';
+                // Nouns section
+                const nounWords = rootWords.filter(word => word.type === 'noun');
+                if (nounWords.length > 0) {
+                    const nounHeader = document.createElement('div');
+                    nounHeader.innerHTML = '<b>Nouns</b>';
+                    nounHeader.style.margin = '10px 0 5px 0';
+                    content.appendChild(nounHeader);
+                    nounWords.forEach((word, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-item';
+                        div.innerHTML = `<span class="preview-hebrew">${idx+1}. ${word.word}</span> <span>${word.meaning}</span>`;
+                        content.appendChild(div);
+                    });
+                }
+                // Verbs section
+                const verbWords = rootWords.filter(word => word.type === 'verb');
+                if (verbWords.length > 0) {
+                    const verbHeader = document.createElement('div');
+                    verbHeader.innerHTML = '<b>Verbs</b>';
+                    verbHeader.style.margin = '10px 0 5px 0';
+                    content.appendChild(verbHeader);
+                    verbWords.forEach((word, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-item';
+                        div.innerHTML = `<span class="preview-hebrew">${idx+1}. ${word.word}</span> <span>${word.meaning}</span>`;
+                        content.appendChild(div);
+                    });
+                }
+                // Others section
+                if (otherWords.length > 0) {
+                    const otherHeader = document.createElement('div');
+                    otherHeader.innerHTML = '<b>Others</b>';
+                    otherHeader.style.margin = '10px 0 5px 0';
+                    content.appendChild(otherHeader);
+                    otherWords.forEach((word, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-item';
+                        div.innerHTML = `<span class="preview-hebrew">${idx+1}. ${word.word}</span> <span>${word.meaning}</span>`;
+                        content.appendChild(div);
+                    });
+                }
+            } else {
+                title.textContent = category === 'prefix' ? 'Prefixes' : 'Suffixes';
+                affixes.filter(affix => affix.type === category).forEach(affix => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    div.innerHTML = `<span class="preview-hebrew">${affix.affix}</span> <span>${affix.meaning} (${affix.applicableTo.join(', ')})</span>`;
+                    content.appendChild(div);
+                });
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function showOthersLevelOptions() {
+            const practiceOptions = document.getElementById('practice-options');
+            practiceOptions.innerHTML = `
+                <button class="level-option" onclick="startOthersMode(1)">Level 1 (1-25)</button>
+                <button class="level-option" onclick="startOthersMode(2)">Level 2 (26-50)</button>
+            `;
+            practiceOptions.style.display = 'flex';
+            document.getElementById('preview-section').style.display = 'none';
+            updateHeading('SELECT OTHERS LEVEL');
+        }
+
+        function startOthersMode(level) {
+            currentMode = 'others';
+            currentLevel = level;
+            document.getElementById('practice-options').style.display = 'none';
+            document.getElementById('preview-section').style.display = 'none';
+            document.getElementById('game-area').style.display = 'flex';
+            document.getElementById('change-mode-button').style.display = 'inline-block';
+            document.getElementById('begin-next-button').textContent = 'Begin';
+            resetBoxes();
+            // Do NOT show the first word yet; wait for Begin click
+            gameStarted = false;
+            updateHeading(`OTHERS - LEVEL ${level}`);
+        }
+
+        function spinOther() {
+            const shoreshBox = document.getElementById('shoresh-box');
+            const applicableWords = otherWords.filter(word => word.level === currentLevel);
+            if (applicableWords.length > 0) {
+                currentOther = applicableWords[currentOtherIndex % applicableWords.length];
+                shoreshBox.textContent = currentOther.word;
+                currentOtherIndex = (currentOtherIndex + 1) % applicableWords.length;
+            } else {
+                currentOther = null;
+                shoreshBox.textContent = 'No words available';
+            }
+            // Apply wide style for Others
+            shoreshBox.classList.add('others-wide-box');
+        }
+
+        function setOtherBoxClickHandler() {
+            const shoreshBox = document.getElementById('shoresh-box');
+            shoreshBox.onclick = () => {
+                spinOther();
+                clearTranslation();
+            };
+            shoreshBox.classList.add('clickable');
+        }
+
+        document.getElementsByClassName('close')[0].onclick = function() {
+            document.getElementById('preview-modal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('preview-modal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('change-mode-button').onclick = showPracticeOptions;
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyA6MZPdhtZ0dWePYdRWJZv6nFR8yo35EvM",
+          authDomain: "shoresh-breakdown.firebaseapp.com",
+          projectId: "shoresh-breakdown",
+          storageBucket: "shoresh-breakdown.firebasestorage.app",
+          messagingSenderId: "973230049826",
+          appId: "1:973230049826:web:bb9139c34e6ea47f50987b",
+          measurementId: "G-D564VEJLQG"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Initialize Auth and Firestore
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Show/hide sign-in button based on auth state
+        auth.onAuthStateChanged(function(user) {
+          const btn = document.getElementById('google-signin-btn');
+          const userInfo = document.getElementById('user-info');
+          if (user) {
+            btn.style.display = 'none';
+            signoutBtn.style.display = 'inline-block';
+            userInfo.textContent = `Signed in as: ${user.displayName || user.email}`;
+            // You can now use user.uid to save/retrieve their progress!
+          } else {
+            btn.style.display = 'inline-block';
+            signoutBtn.style.display = 'none';
+            userInfo.textContent = '';
+          }
+        });
+
+        // Sign in with Google when button is clicked
+        document.getElementById('google-signin-btn').onclick = function() {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          auth.signInWithPopup(provider)
+            .then((result) => {
+              // Signed in!
+              // You can use result.user
+            })
+            .catch((error) => {
+              alert('Sign-in failed: ' + error.message);
+            });
+        };
+
+        // Modified saveProgress function
+        function saveProgress(status) {
+            let wordObj = null;
+            let prefix = null;
+            let suffix = null;
+            let type = null;
+            let level = null;
+            if (currentMode === 'others' && currentOther) {
+                wordObj = currentOther;
+                type = 'other';
+                level = currentLevel;
+            } else if (currentShoresh) {
+                wordObj = currentShoresh;
+                type = wordObj.type;
+                level = wordObj.level;
+                if (currentAffixMode === 'prefix' && currentPrefix) prefix = currentPrefix.affix;
+                if (currentAffixMode === 'suffix' && currentSuffix) suffix = currentSuffix.affix;
+            }
+            if (!wordObj) return;
+            
+            let docId = wordObj.word;
+            if (prefix) docId += `__prefix_${prefix}`;
+            if (suffix) docId += `__suffix_${suffix}`;
+            
+            // Get existing progress from localStorage
+            const progressKey = `progress_${docId}`;
+            const existingProgress = JSON.parse(localStorage.getItem(progressKey) || '{"correct": 0, "incorrect": 0, "total": 0}');
+            
+            // Update progress
+            if (status === 'correct') existingProgress.correct++;
+            if (status === 'incorrect') existingProgress.incorrect++;
+            existingProgress.total++;
+            
+            // Save back to localStorage
+            localStorage.setItem(progressKey, JSON.stringify(existingProgress));
+        }
+
+        // Modified loadAndShowProgress function
+        function loadAndShowProgress() {
+            const data = {};
+            // Get all progress items from localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('progress_')) {
+                    const docId = key.replace('progress_', '');
+                    const progress = JSON.parse(localStorage.getItem(key));
+                    
+                    // Parse the docId to get word, prefix, and suffix
+                    const [word, ...rest] = docId.split('__');
+                    let prefix = null;
+                    let suffix = null;
+                    let type = 'other';
+                    let level = 1;
+                    
+                    rest.forEach(part => {
+                        if (part.startsWith('prefix_')) prefix = part.replace('prefix_', '');
+                        if (part.startsWith('suffix_')) suffix = part.replace('suffix_', '');
+                    });
+                    
+                    // Try to find the word in our word lists to get type and level
+                    const wordObj = [...rootWords, ...otherWords].find(w => w.word === word);
+                    if (wordObj) {
+                        type = wordObj.type || 'other';
+                        level = wordObj.level || 1;
+                    }
+                    
+                    // Organize data by type and level
+                    if (!data[type]) data[type] = {};
+                    if (!data[type][level]) data[type][level] = {};
+                    data[type][level][docId] = {
+                        ...progress,
+                        word: word,
+                        prefix: prefix,
+                        suffix: suffix
+                    };
+                }
+            }
+            renderProgressDashboard(data);
+        }
+
+        // --- 5. After shoresh correct, present affix choice ---
+        function showAffixChoice() {}
+        function hideAffixChoice() {}
+        function chooseAffix() {}
+
+        // --- 2. Shoresh+Affix mode logic ---
+        let shoreshAffixState = null; // null, 'shoresh', 'choice', 'prefix', 'suffix'
+        let practicedAffixes = {prefix: [], suffix: []};
+
+        // 1. Remove Prefix and Suffix buttons from the initial home screen as well as on change mode
+        window.onload = function() {
+            document.getElementById('practice-options').innerHTML = `
+                <button class="shoresh-prefix-option" onclick="showLevelOptions('noun')">Nouns</button>
+                <button class="shoresh-suffix-option" onclick="showLevelOptions('verb')">Verbs</button>
+                <button class="others-option" onclick="showOthersLevelOptions()">Others</button>
+            `;
+            
+            // Fix preview modal close button
+            const previewModal = document.getElementById('preview-modal');
+            const closeBtns = previewModal.getElementsByClassName('close');
+            for (let i = 0; i < closeBtns.length; i++) {
+                closeBtns[i].onclick = function() {
+                    previewModal.style.display = 'none';
+                };
+            }
+            window.onclick = function(event) {
+                if (event.target == previewModal) {
+                    previewModal.style.display = 'none';
+                }
+            };
+        };
+    </script>
+</body>
+</html>
