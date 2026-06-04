@@ -987,11 +987,12 @@
                 spinOther();
             }
             // If we are in Shoresh+Prefix mode, spin ONLY the prefix, keep Shoresh
-            else if (currentMode.includes('shoresh-prefix')) {
-            } 
+else if (currentAffixMode === 'prefix') {
+    
+} 
             // If we are in Shoresh+Suffix mode, spin ONLY the suffix, keep Shoresh
-            else if (currentMode.includes('shoresh-suffix')) {
-                spinSuffix();
+else if (currentAffixMode === 'suffix') {
+    spinSuffix();
             } 
             // If we are just practicing Shoresh (or Others), spin the word
             else {
