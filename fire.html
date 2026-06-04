@@ -981,7 +981,24 @@
             clearTranslation();
         }
 
-
+// Helper function to manage game progression
+        function advanceGame() {
+            if (currentMode.includes('prefix') && currentPrefix) {
+                // Keep Shoresh, spin only Prefix
+                spinPrefix();
+            } else if (currentMode.includes('suffix') && currentSuffix) {
+                // Keep Shoresh, spin only Suffix
+                spinSuffix();
+            } else {
+                // Not in an affix mode, spin both Shoresh and appropriate affix
+                spinShoresh();
+            }
+            
+            // Clear UI for next turn
+            document.getElementById('translation').textContent = '';
+            document.getElementById('progress-buttons').style.display = 'none';
+            document.getElementById('reveal-button').style.display = 'inline-block';
+        }
        // --- Update progress button handlers ---
         setTimeout(() => {
             const correctBtn = document.getElementById('correct-btn');
@@ -990,13 +1007,11 @@
             if (correctBtn && incorrectBtn) {
                 correctBtn.onclick = function() {
                     saveProgress('correct');
-                    // Automatically load the next word/affix combo
-                    beginOrNext();
+                    advanceGame();
                 };
                 incorrectBtn.onclick = function() {
                     saveProgress('incorrect');
-                    // Automatically load the next word/affix combo
-                    beginOrNext();
+                    advanceGame();
                 };
             }
             
