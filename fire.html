@@ -982,10 +982,12 @@
         }
 
 // Helper function to manage game progression
-      function advanceGame() {
+    function advanceGame() {
+            if (currentMode === 'others') {
+                spinOther();
+            }
             // If we are in Shoresh+Prefix mode, spin ONLY the prefix, keep Shoresh
-            if (currentMode.includes('shoresh-prefix')) {
-                spinPrefix();
+            else if (currentMode.includes('shoresh-prefix')) {
             } 
             // If we are in Shoresh+Suffix mode, spin ONLY the suffix, keep Shoresh
             else if (currentMode.includes('shoresh-suffix')) {
