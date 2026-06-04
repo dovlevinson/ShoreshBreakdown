@@ -982,19 +982,21 @@
         }
 
 // Helper function to manage game progression
-        function advanceGame() {
-            if (currentMode.includes('prefix') && currentPrefix) {
-                // Keep Shoresh, spin only Prefix
+      function advanceGame() {
+            // If we are in Shoresh+Prefix mode, spin ONLY the prefix, keep Shoresh
+            if (currentMode.includes('shoresh-prefix')) {
                 spinPrefix();
-            } else if (currentMode.includes('suffix') && currentSuffix) {
-                // Keep Shoresh, spin only Suffix
+            } 
+            // If we are in Shoresh+Suffix mode, spin ONLY the suffix, keep Shoresh
+            else if (currentMode.includes('shoresh-suffix')) {
                 spinSuffix();
-            } else {
-                // Not in an affix mode, spin both Shoresh and appropriate affix
+            } 
+            // If we are just practicing Shoresh (or Others), spin the word
+            else {
                 spinShoresh();
             }
             
-            // Clear UI for next turn
+            // Clean up the UI for the next drill
             document.getElementById('translation').textContent = '';
             document.getElementById('progress-buttons').style.display = 'none';
             document.getElementById('reveal-button').style.display = 'inline-block';
