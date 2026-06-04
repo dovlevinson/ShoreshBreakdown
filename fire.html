@@ -981,24 +981,25 @@
             clearTranslation();
         }
 
-        // --- Update progress button handlers ---
+
+       // --- Update progress button handlers ---
         setTimeout(() => {
             const correctBtn = document.getElementById('correct-btn');
             const incorrectBtn = document.getElementById('incorrect-btn');
+            
             if (correctBtn && incorrectBtn) {
                 correctBtn.onclick = function() {
                     saveProgress('correct');
-                    document.getElementById('translation').textContent = '';
-                    document.getElementById('progress-buttons').style.display = 'none';
-                    document.getElementById('reveal-button').style.display = 'none';
+                    // Automatically load the next word/affix combo
+                    beginOrNext();
                 };
                 incorrectBtn.onclick = function() {
                     saveProgress('incorrect');
-                    document.getElementById('translation').textContent = '';
-                    document.getElementById('progress-buttons').style.display = 'none';
-                    document.getElementById('reveal-button').style.display = 'none';
+                    // Automatically load the next word/affix combo
+                    beginOrNext();
                 };
             }
+            
             // Progress dashboard modal handlers
             const progressBtn = document.getElementById('progress-dashboard-btn');
             const closeProgressBtn = document.getElementById('close-progress-dashboard');
